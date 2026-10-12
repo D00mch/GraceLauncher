@@ -40,7 +40,7 @@
     <string name="shortcuts_title">Atajos</string>
     <string name="shortcuts_search">Buscar atajos</string>
     <string name="shortcuts_load_partial">No se pudieron cargar algunos accesos directos</string>
-    <string name="settings_gestures">Gesto</string>
+    <string name="settings_gestures">Gestos</string>
     <string name="home_gestures_enable">Habilitar gestos</string>
     <string name="home_gesture_double_tap">Doble toque en espacio vacío</string>
     <string name="work_profile_title">Perfil de trabajo</string>
@@ -602,4 +602,5 @@
     <string name="alphabet_bottom">Posición inferior</string>
     <string name="alphabet_free_movement">Movimiento libre</string>
     <string name="alphabet_free_movement_summary">Arrastra más allá de cualquiera de los extremos para mover el alfabeto. Suelta para volver.</string>
+    <string name="alphabet_automatic_spacing">Automático · %1$d dp espaciado</string>
 </resources>

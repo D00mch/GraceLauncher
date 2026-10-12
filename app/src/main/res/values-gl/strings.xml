@@ -40,14 +40,14 @@
     <string name="shortcuts_title">Atallos</string>
     <string name="shortcuts_search">Atallos de busca</string>
     <string name="shortcuts_load_partial">Non se puideron cargar algúns atallos</string>
-    <string name="settings_gestures">Xesto</string>
+    <string name="settings_gestures">Xestos</string>
     <string name="home_gestures_enable">Activar xestos</string>
     <string name="home_gesture_double_tap">Tocar dúas veces nun espazo baleiro</string>
     <string name="work_profile_title">Perfil de traballo</string>
     <string name="work_profile_summary">Organiza as aplicacións no teu perfil de traballo de Android</string>
     <string name="work_profile_enable">Activar a agrupación do perfil de traballo</string>
     <string name="work_profile_indicator">Indicador da aplicación de traballo</string>
-    <string name="work_profile_indicator_summary">Mostrar un distintivo de traballo nas iconas das aplicacións de traballo</string>
+    <string name="work_profile_indicator_summary">Amosar un distintivo de traballo nas iconas das aplicacións de traballo</string>
     <string name="work_profile_edit">Editar</string>
     <string name="work_profile_setup">Abrir a configuración do perfil de traballo</string>
     <string name="work_profile_setup_summary">Xestiona o teu perfil de traballo na configuración de Android</string>
@@ -57,7 +57,7 @@
     <string name="private_space_title">Espazo privado</string>
     <string name="private_space_summary">Un espazo protexido para as túas aplicacións privadas</string>
     <string name="private_space_enable">Activar o Espazo privado</string>
-    <string name="private_space_enable_summary">Mostrar o Espazo privado na parte inferior de Cartafoles na lista de aplicacións</string>
+    <string name="private_space_enable_summary">Amosar o Espazo privado na parte inferior de Cartafoles na lista de aplicacións</string>
     <string name="private_space_password">Protección con contrasinal</string>
     <string name="private_space_password_summary">Verifica a túa identidade mediante a pegada dactilar ou un contrasinal do sistema ao abrir. É posible que Android tamén solicite o contrasinal do Espazo privado.</string>
     <string name="private_space_display">Amosar como</string>
@@ -129,7 +129,7 @@
     <string name="icon_edit_default">Predeterminado</string>
     <string name="icon_edit_follow_theme">Seguir o tema de iconas</string>
     <string name="icon_edit_image">Imaxe personalizada</string>
-    <string name="icon_edit_search">Buscar iconas</string>
+    <string name="icon_edit_search">Procurar iconas</string>
     <string name="icon_edit_no_results">Non hai iconas coincidentes</string>
     <string name="icon_edit_failed">Non se puido gardar esta icona. Proba con outra imaxe ou icona.</string>
     <string name="edit_app_popup">Editar a xanela emerxente %1$s</string>
@@ -152,7 +152,7 @@
     <string name="new_category">Nova categoría</string>
     <string name="remove_category">Eliminar da categoría</string>
     <string name="categories">Categorías</string>
-    <string name="wallpaper_text">Texto do fondo de pantalla</string>
+    <string name="wallpaper_text">Texto do fondo da pantalla</string>
     <string name="text_auto">Automático</string>
     <string name="text_light">Claro</string>
     <string name="text_dark">Escuro</string>
@@ -161,13 +161,13 @@
     <string name="your_agenda">A túa axenda</string>
     <string name="today">hoxe</string>
     <string name="new_event">Novo evento</string>
-    <string name="calendar_permission_description">Conecta o teu calendario para mostrar os próximos eventos. A túa axenda permanece neste dispositivo.</string>
+    <string name="calendar_permission_description">Conecta o teu calendario para amosar os próximos eventos. A túa axenda permanece neste dispositivo.</string>
     <string name="connect_calendar">Conectar o calendario</string>
     <string name="calendar_error">Non se puido cargar o teu calendario</string>
     <string name="no_upcoming_events">Non hai eventos nos próximos 14 días</string>
     <string name="search_apps">Procurar aplicacións</string>
     <string name="search_no_results">Non hai aplicacións coincidentes</string>
-    <string name="launcher_fab_description">Buscar aplicacións. Mantén premido para acceder á configuración.</string>
+    <string name="launcher_fab_description">Procurar aplicacións. Mantén premido para acceder á configuración.</string>
     <string name="drawer_folders">Cartafoles</string>
     <string name="recently_installed">Instalado recentemente</string>
     <string name="add_to_folder">Engadir ao cartafol</string>
@@ -193,7 +193,7 @@
     <string name="media_player_summary">Amosar a reprodución na pantalla de inicio</string>
     <string name="media_allow_controls">Permitir notificacións e contido multimedia</string>
     <string name="media_access_required">Requírese acceso ás notificacións</string>
-    <string name="media_access_explanation">Activa o acceso ás notificacións para Grace Launcher na seguinte pantalla. Grace utilízao para mostrar vistas previas de notificacións e mensaxes das aplicacións, abrir ou descartar notificacións cando ti queiras e controlar as sesións multimedia. O texto e as iconas das notificacións almacénanse só na memoria; nunca se gardan nin se soben a ningún servidor. Podes revogar o acceso en calquera momento dende a configuración do sistema.</string>
+    <string name="media_access_explanation">Activa o acceso ás notificacións para Grace Launcher na seguinte pantalla. Grace utilízao para amosar vistas previas de notificacións e mensaxes das aplicacións, abrir ou descartar notificacións cando ti queiras e controlar as sesións multimedia. O texto e as iconas das notificacións almacénanse só na memoria; nunca se gardan nin se soben a ningún servidor. Podes revogar o acceso en calquera momento dende a configuración do sistema.</string>
     <string name="media_open_settings">Abrir a configuración</string>
     <string name="media_play">Reproducir</string>
     <string name="media_pause">Pausa</string>
@@ -223,7 +223,7 @@
     <string name="settings_instant_access">Acceso inmediato</string>
     <string name="settings_calendar_agenda">Axenda do calendario</string>
     <string name="settings_calendar_agenda_summary">Amosa o seguinte evento na pantalla de inicio</string>
-    <string name="settings_weather">Tempo</string>
+    <string name="settings_weather">O tempo</string>
     <string name="settings_media_player">Reproductor multimedia</string>
     <string name="settings_coming_soon">Próximamente</string>
     <string name="settings_app_organization">Organización da aplicación</string>
@@ -273,7 +273,7 @@
     <string name="settings_accent_color">Cor de acento</string>
     <string name="settings_dynamic_or_custom">Escolle a túa cor de acento</string>
     <string name="settings_dynamic_colors">Cores dinámicas</string>
-    <string name="settings_dynamic_colors_summary">Usa cores do fondo de pantalla</string>
+    <string name="settings_dynamic_colors_summary">Usa cores do fondo da pantalla</string>
     <string name="settings_color_option">Cor %1$s</string>
     <string name="settings_theme_mode">Modo escuro</string>
     <string name="settings_amoled_mode">Modo AMOLED</string>
@@ -305,13 +305,13 @@
     <string name="settings_hide_alphabet_summary">Ocultar na pantalla de inicio ata que deslices o dedo polo alfabeto</string>
     <string name="settings_hide_favorite_names">Ocultar nomes dos favoritos</string>
     <string name="settings_hide_favorite_names_summary">Manter os nomes visibles na lista de aplicacións</string>
-    <string name="settings_dim_wallpaper">Atenuar fondos de pantalla</string>
+    <string name="settings_dim_wallpaper">Atenuar fondos da pantalla</string>
     <string name="settings_dim_wallpaper_summary">Engade unha superposición coa cor do tema detrás da lista de aplicacións</string>
     <string name="settings_wallpaper_opacity">Opacidade da superposición</string>
-    <string name="settings_blur_wallpaper">Desenfocar fondo de pantalla</string>
-    <string name="settings_blur_wallpaper_summary">Suaviza o fondo de pantalla detrás da lista de aplicacións</string>
+    <string name="settings_blur_wallpaper">Desenfocar fondo da pantalla</string>
+    <string name="settings_blur_wallpaper_summary">Suaviza o fondo da pantalla detrás da lista de aplicacións</string>
     <string name="settings_wallpaper_blur_amount">Intensidade do desenfoque</string>
-    <string name="settings_blur_unavailable">O desenfoque do fondo de pantalla non está dispoñible neste dispositivo ou no modo actual do sistema</string>
+    <string name="settings_blur_unavailable">O desenfoque do fondo da pantalla non está dispoñible neste dispositivo ou no modo actual do sistema</string>
     <string name="settings_about_description">Un lanzador de Android tranquilo e baseado en listas, desenvolvido con Kotlin e Jetpack Compose.</string>
     <string name="settings_folder_members">Aplicacións neste cartafol</string>
     <string name="settings_wallpaper_dim_color">Cor de superposición</string>
@@ -330,7 +330,7 @@
     <string name="icon_pack_system">Iconas do sistema</string>
     <string name="icon_pack_enabled">Paquetes de iconas activados</string>
     <string name="icon_pack_all">todo</string>
-    <string name="icon_pack_search">Buscar paquetes de iconas</string>
+    <string name="icon_pack_search">Procurar paquetes de iconas</string>
     <string name="icon_designer_title">Icon designer</string>
     <string name="icon_designer_single">único</string>
     <string name="icon_designer_all">todos</string>
@@ -356,7 +356,7 @@
     <string name="icon_designer_example">Exemplo</string>
     <string name="icon_designer_save">Gardar</string>
     <string name="icon_designer_saved">Gardado</string>
-    <string name="icon_designer_switch_app">Cambiar de aplicación</string>
+    <string name="icon_designer_switch_app">Trocar de aplicación</string>
     <string name="icon_designer_source">Paquete de iconas ou imaxe</string>
     <string name="icon_designer_suggestions">Suxestións</string>
     <string name="icon_suggestion_list">Formatar lista con viñetas</string>
@@ -430,7 +430,7 @@
     </plurals>
     <plurals name="weather_settings_days_summary">
         <item quantity="one">Mostrar ata %1$d día. As predicións dispoñibles dependen da localización e da fonte de Breezy Weather seleccionadas.</item>
-        <item quantity="other">Mostrar ata %1$d días. As predicións dispoñibles dependen da localización e da fonte de Breezy Weather seleccionadas.</item>
+        <item quantity="other">Amosar ata %1$d días. As predicións dispoñibles dependen da localización e da fonte de Breezy Weather seleccionadas.</item>
     </plurals>
     <string name="weather_current_description">%1$s, %2$s</string>
     <string name="weather_daily_description">%1$s, máximo %2$s, mínimo %3$s</string>
@@ -460,7 +460,7 @@
         <item quantity="one">%1$d biblioteca</item>
         <item quantity="other">%1$d bibliotecas</item>
     </plurals>
-    <string name="licenses_search">Buscar bibliotecas</string>
+    <string name="licenses_search">Procurar bibliotecas</string>
     <string name="licenses_clear_search">Limpar a busca</string>
     <string name="licenses_no_results">Non hai bibliotecas coincidentes</string>
     <string name="licenses_load_failed">Non se puideron cargar as licenzas da biblioteca.</string>
@@ -496,15 +496,15 @@
     <string name="clock_show_colon">Amosar dous puntos</string>
     <string name="clock_show_colon_summary">Separa as horas e os minutos con dous puntos</string>
     <string name="clock_reset_value">Restabelecer %1$s aos valores predeterminados</string>
-    <string name="settings_search">Buscar</string>
+    <string name="settings_search">Procura</string>
     <string name="search_settings_summary">Aplicacións, contactos e suxestións</string>
     <string name="search_enable">Activar a busca</string>
     <string name="search_open_settings">Configuración de busca</string>
     <string name="search_suggestions">Suxestións de busca</string>
-    <string name="search_suggestions_summary">Mostrar as últimas 5 aplicacións abertas desde a busca</string>
+    <string name="search_suggestions_summary">Amosar as últimas 5 aplicacións abertas dende a busca</string>
     <string name="search_contacts">Busca de contactos</string>
     <string name="search_contacts_summary">Busca contactos por nome ou número de teléfono</string>
-    <string name="search_contacts_permission">Permite o acceso aos contactos na configuración de Android para buscar contactos.</string>
+    <string name="search_contacts_permission">Permite o acceso aos contactos na configuración de Android para procurar contactos.</string>
     <string name="search_unnamed_contact">Contacto sen nome</string>
     <string name="search_files">Busca de ficheiros</string>
     <string name="search_fuzzy">Busca difusa</string>
@@ -523,15 +523,15 @@
     <string name="search_engine_url_example">https://examplo.com/search?q={query}</string>
     <string name="search_engine_url_hint">Usa {query} onde deberían ir os termos de busca. Ábrese no teu navegador predeterminado.</string>
     <string name="search_engine_url_error">Introduce unha URL válida (http:// ou https://) e inclúe {query} despois do dominio.</string>
-    <string name="search_internet_result">Buscar en Internet</string>
-    <string name="search_hidden_apps">Buscar aplicacións ocultas</string>
+    <string name="search_internet_result">Procurar en Internet</string>
+    <string name="search_hidden_apps">Procurar aplicacións ocultas</string>
     <string name="search_hidden_apps_summary">Incluír aplicacións ocultas da lista de aplicacións</string>
     <string name="search_clear_query">Limpar a busca</string>
     <string name="app_selection_fast_scroll">Desprazarse rapidamente polas aplicacións</string>
     <string name="widget_home_menu">Widget de Grace</string>
     <string name="widget_add">Engadir un widget personalizado</string>
     <string name="widget_choose">Escolle un widget</string>
-    <string name="widget_search">Buscar widgets</string>
+    <string name="widget_search">Procurar widgets</string>
     <string name="widget_none">Non se atoparon widgets</string>
     <string name="widget_single_limit">De momento, só se admite un widget personalizado. Os widgets apilados chegarán máis adiante.</string>
     <string name="widget_setup_error">Non se puido engadir este widget. Téntao de novo.</string>
@@ -557,12 +557,12 @@
     <string name="pin_item_add">Engadir</string>
     <string name="pin_shortcut_message">Engadir “%1$s” á pantalla de inicio e á lista de aplicacións?</string>
     <string name="pin_widget_message">Engadir o widget “%1$s” á pantalla de inicio?</string>
-    <string name="pin_item_expired">Esta solicitude xa non está dispoñible. Por favor, téntao de novo desde a aplicación.</string>
+    <string name="pin_item_expired">Esta solicitude xa non está dispoñible. Por favor, téntao de novo dende a aplicación.</string>
     <string name="pin_item_error">Non se puido engadir este atallo. Téntao de novo.</string>
     <string name="font_follow_manager">Predeterminado · Xestor de tipos de letra</string>
     <string name="font_add">Engadir tipo de letra</string>
     <string name="font_all">Todas as fontes</string>
-    <string name="font_search">Buscar tipos de letra</string>
+    <string name="font_search">Procurar tipos de letra</string>
     <string name="font_delete">Eliminar</string>
     <string name="font_delete_title">Eliminar tipos de letra?</string>
     <string name="font_delete_summary">Eliminar %1$d tipos de letra importados? Os compoñentes que os utilizan volverán ao tipo de letra predeterminado.</string>
@@ -571,7 +571,7 @@
     <string name="list_side_padding">Marxes laterais da lista</string>
     <string name="list_icon_name_gap">Espazamento da icona e do nome</string>
     <string name="list_font_color">Cor da fonte</string>
-    <string name="list_color_default">Seguir a cor do texto do fondo de pantalla</string>
+    <string name="list_color_default">Seguir a cor do texto do fondo da pantalla</string>
     <string name="list_show_names">Amosar os nomes das aplicacións</string>
     <string name="list_names_both">Favoritos e lista de aplicacións</string>
     <string name="list_names_favorites">Só favoritos</string>
@@ -594,4 +594,5 @@
     <string name="alphabet_bottom">Posición inferior</string>
     <string name="alphabet_free_movement">Libre movemento</string>
     <string name="alphabet_free_movement_summary">Arrastra máis alá de calquera dos extremos para mover o alfabeto. Solta para volver á posición inicial.</string>
+    <string name="alphabet_automatic_spacing">Automático · Espazado de %1$d dp</string>
 </resources>
