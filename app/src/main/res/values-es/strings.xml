@@ -603,4 +603,13 @@
     <string name="alphabet_free_movement">Movimiento libre</string>
     <string name="alphabet_free_movement_summary">Arrastra más allá de cualquiera de los extremos para mover el alfabeto. Suelta para volver.</string>
     <string name="alphabet_automatic_spacing">Automático · %1$d dp espaciado</string>
+    <string name="grace_button_position_size">Posición y tamaño</string>
+    <string name="grace_button_alignment">Alineación</string>
+    <string name="grace_button_align_left">Izquierda</string>
+    <string name="grace_button_align_center">Centro</string>
+    <string name="grace_button_align_right">Derecha</string>
+    <string name="grace_button_side_distance">Distancia desde el lateral</string>
+    <string name="grace_button_bottom_distance">Distancia desde la parte inferior</string>
+    <string name="grace_button_size">Tamaño del botón</string>
+    <string name="grace_button_position_hint">Arrastra el botón para cambiar su posición</string>
 </resources>
