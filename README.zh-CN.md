@@ -39,8 +39,6 @@
 
 天气数据由 [Breezy Weather](https://github.com/breezy-weather/breezy-weather) 提供，需要另行安装并配置该应用。
 
-应用图标使用 `#FFEDC2` 实心 Grace 标志与 `#6865A8` 背景，默认展示和 README 使用圆形底，Android 自适应图标跟随系统图标形状；主题应用图标、设置中的标志和桌面 Grace 按钮也统一使用实心版本，由系统或应用主题着色。矢量源文件位于 [`design/icon`](design/icon)；导出图保留完整 1080px 画板的设计比例。Android 自适应图标层居中缩放为 72/108，以补偿系统在 108dp 图层中仅显示中央 72dp 的裁切；应用内标志使用原始比例，不叠加这层补偿。
-
 ## 截图
 
 | 主屏幕 | 日程与天气 | 音乐控制 | 应用列表 | 应用快捷方式 |
@@ -83,15 +81,7 @@ Grace Launcher 不申请 Android 的 `INTERNET` 权限，也不包含广告或�
 
 ## 参与贡献
 
-欢迎通过 Issue 报告问题或提出建议，也欢迎提交 Pull Request。
-
-翻译由 [Weblate](https://hosted.weblate.org/engage/grace_launcher/) 管理。你可以在那里帮助将 Grace Launcher 翻译成自己的语言。
-
-每种语言的 UI 文案统一放在一个 `strings.xml` 文件中：源文案位于 `app/src/main/res/values/strings.xml`，翻译位于 `values-<locale>/strings.xml`。使用分区注释组织文案，避免按功能拆分多个资源文件。
-
-代码按职责组织：`data` 存放模型与数据存储，`platform` 集成 Android 系统服务，`ui` 存放功能界面，可复用的界面元素位于 `ui/components`。相关的小型辅助函数应保留在对应功能中，避免增加不必要的层级。
-
-Git 会忽略生成的构建产物、临时截图、本地发布安装包，以及 `.local` 中的维护草稿。`.idea` 中仅提交共享的代码风格和检查配置；设备选择与其他本地 IDE 状态不纳入版本控制。
+欢迎通过 [Issues](https://github.com/Galaxy-rio/GraceLauncher/issues) 报告问题和提出建议、提交 Pull Request，或在 [Weblate](https://hosted.weblate.org/engage/grace_launcher/) 参与翻译。
 
 <a href="https://hosted.weblate.org/engage/grace_launcher/">
   <img src="https://hosted.weblate.org/widget/grace_launcher/multi-auto.svg" alt="翻译进度">

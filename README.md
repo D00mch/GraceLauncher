@@ -39,8 +39,6 @@ Built with Kotlin, Jetpack Compose, and Material You. The list-based layout take
 
 Weather data is provided through [Breezy Weather](https://github.com/breezy-weather/breezy-weather), which must be installed and configured separately.
 
-The app icon uses the solid Grace logo in `#FFEDC2` on `#6865A8`, with a circular background for default artwork and README displays. Android adaptive icons follow the system icon shape. Themed app icons, settings icons, and the home screen Grace button also use the solid logo, tinted by the system or app theme. Vector artwork lives in [`design/icon`](design/icon); exports preserve the full 1080px artboard proportions. Android adaptive layers use a centered 72/108 scale to compensate for the system's 72dp masked viewport within the 108dp layer; in-app glyphs use the original artwork without that compensation.
-
 ## Screenshots
 
 | Home | Agenda & weather | Music controls | App list | App shortcuts |
@@ -83,15 +81,7 @@ Calendar permission and notification access are optional. Calendar permission en
 
 ## Contributing
 
-Contributions are welcome. Feel free to open an issue to report a bug or suggest an improvement, or submit a pull request with your changes.
-
-Translations are managed through [Weblate](https://hosted.weblate.org/engage/grace_launcher/). You can help translate Grace Launcher into your language there.
-
-Keep all UI strings in one `strings.xml` per language: `app/src/main/res/values/strings.xml` for the source text and `values-<locale>/strings.xml` for translations. Use section comments instead of splitting strings into feature-specific resource files.
-
-Code is grouped by responsibility: `data` contains models and storage, `platform` integrates Android services, and `ui` contains feature screens with reusable elements in `ui/components`. Keep related small helpers with their feature rather than adding extra layers.
-
-Generated build outputs, temporary captures, local release packages and `.local` maintainer drafts are ignored by Git. Only shared code styles and inspections from `.idea` are versioned; device selections and other local IDE state stay on your machine.
+Report bugs and suggest improvements through [Issues](https://github.com/Galaxy-rio/GraceLauncher/issues), submit a pull request, or help translate on [Weblate](https://hosted.weblate.org/engage/grace_launcher/).
 
 <a href="https://hosted.weblate.org/engage/grace_launcher/">
   <img src="https://hosted.weblate.org/widget/grace_launcher/multi-auto.svg" alt="Translation status">
