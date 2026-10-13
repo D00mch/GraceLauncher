@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="fastlane/metadata/android/en-US/images/icon.png" width="128" alt="Grace Launcher icon">
+  <img src="design/icon/app-icon.svg" width="128" alt="Grace Launcher icon">
 
   <h1>Grace Launcher</h1>
 
@@ -38,6 +38,8 @@
 Built with Kotlin, Jetpack Compose, and Material You. The list-based layout takes inspiration from [Niagara Launcher](https://niagaralauncher.app/).
 
 Weather data is provided through [Breezy Weather](https://github.com/breezy-weather/breezy-weather), which must be installed and configured separately.
+
+The app icon uses the solid Grace logo in `#FFEDC2` on `#6865A8`. Themed app icons, settings icons, and the home screen Grace button use the outline version. Vector artwork lives in [`design/icon`](design/icon); Exports preserve the full 1080px artboard proportions. Android adaptive layers use a centered 72/108 scale to compensate for the system's 72dp masked viewport within the 108dp layer; in-app glyphs use the original artwork without that compensation.
 
 ## Screenshots
 

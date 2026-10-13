@@ -113,10 +113,10 @@ internal fun ProductivitySettings(
             item {
                 SettingsActionItem(stringResource(R.string.settings_grace_button), null,
                     5, 8, "settings_grace_button", leading = {
-                        // Remove the adaptive icon's transparent safe-zone inset;
+                        // The artwork occupies half of its 108dp layer;
                         // keep the same 24dp leading slot as Material Symbols.
-                        Icon(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null,
-                            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = 2.25f; scaleY = 2.25f })
+                        Icon(painterResource(R.drawable.ic_grace_outline), contentDescription = null,
+                            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = 2f; scaleY = 2f })
                     }) { navigate(SettingsPage.GraceButton) }
             }
             item {

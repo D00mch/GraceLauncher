@@ -30,8 +30,8 @@ internal fun AdvancedSettings(onBack: () -> Unit, navigate: (SettingsPage) -> Un
             item { SettingsHeading(stringResource(R.string.settings_lab)) }
             item {
                 SettingsActionItem(stringResource(R.string.settings_grace_button), null, 0, 2, "lab_open_grace_button",
-                    leading = { Icon(painterResource(R.drawable.ic_launcher_foreground), null,
-                        Modifier.size(24.dp).graphicsLayer { scaleX = 2.25f; scaleY = 2.25f }) }) {
+                    leading = { Icon(painterResource(R.drawable.ic_grace_outline), null,
+                        Modifier.size(24.dp).graphicsLayer { scaleX = 2f; scaleY = 2f }) }) {
                     navigate(SettingsPage.LabGraceButton)
                 }
             }

@@ -147,7 +147,7 @@ internal fun GraceButtonTransitionOverlay(transition: GraceButtonTransition) {
     val buttonColor = MaterialTheme.colorScheme.primaryContainer
     val buttonInk = MaterialTheme.colorScheme.onPrimaryContainer
     val fieldColor = SearchBarDefaults.colors().containerColor
-    val glyph = painterResource(R.drawable.ic_launcher_foreground)
+    val glyph = painterResource(R.drawable.ic_grace_outline)
     val artwork = remember(transition.origin.artwork) { transition.origin.artwork?.let { BitmapPainter(it) } }
     Canvas(Modifier.fillMaxSize().onGloballyPositioned { transition.viewport = it.boundsInRoot() }
         .clearAndSetSemantics {}
