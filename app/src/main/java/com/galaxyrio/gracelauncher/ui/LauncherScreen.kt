@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -1050,7 +1051,10 @@ internal fun LauncherScreen(
             autoHide = uiState.settings.hideAlphabet && !drawerOpen,
         )
         if (!drawerOpen && (editingHome || uiState.settings.graceButton.enabled)) {
+            val buttonBounds = uiState.settings.graceButton.layout.bounds(maxWidth.value, maxHeight.value,
+                statusBarHeight.value, bottomInset.value)
             GraceButton(settings = uiState.settings.graceButton, editing = editingHome,
+                size = buttonBounds.size.dp,
                 artwork = uiState.graceButtonApp?.icon.takeIf { GraceButtonIcon.key in uiState.itemIcons },
                 design = GraceButtonIcon.choice(uiState.itemIcons[GraceButtonIcon.key]).design ?: GraceButtonIcon.defaults,
                 enabled = overlay == null && !systemActionAccess && buttonTransition == null,
@@ -1058,7 +1062,7 @@ internal fun LauncherScreen(
                 heldOrigin = buttonTransition?.takeIf { it.action == GraceButtonAction.LockScreen && it.originIsButton }?.origin,
                 onGesture = { gesture, origin -> performGestureAction(uiState.settings.graceButton.target(gesture), origin) },
                 onFinishEditing = { editingHome = false },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = LauncherLayout.End, bottom = 22.dp + bottomInset))
+                modifier = Modifier.align(androidx.compose.ui.AbsoluteAlignment.TopLeft).absoluteOffset(x = buttonBounds.left.dp, y = buttonBounds.top.dp))
         }
       }
       }

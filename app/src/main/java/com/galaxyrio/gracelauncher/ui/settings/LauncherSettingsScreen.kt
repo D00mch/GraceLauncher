@@ -78,6 +78,7 @@ internal enum class SettingsPage {
     Changelog, Licenses, AppLicense, IconPacks, IconDesigner, IconDesignerApp, PrivateSpace, PrivateSpaceEditor, Search,
     MediaPlayer, GraceButton, GraceAction, GraceApp, GraceShortcut, GraceFolder, Gestures, WorkProfile, WorkProfileEditor,
     LabGraceButton, LabGesture, Fonts, ListAppearance, Alphabet, ShortcutsFolders,
+    GraceButtonAppearance, GraceButtonPosition, CalendarAppearance, WeatherAppearance, MediaPlayerAppearance,
 }
 
 /** Navigation owns each page's saved state and seekable predictive-back transition. */
@@ -154,7 +155,8 @@ fun LauncherSettingsScreen(
         modifier = modifier.fillMaxSize().testTag("settings_navigation").graphicsLayer {
             alpha = 1f - rootExit.value
             translationX = distance * direction * rootExit.value
-        }.background(if (currentEntry?.destination?.route in listOf(SettingsPage.ClockStyle.name, SettingsPage.IconDesigner.name, SettingsPage.ListAppearance.name, SettingsPage.Alphabet.name))
+        }.background(if (currentEntry?.destination?.route in listOf(SettingsPage.ClockStyle.name, SettingsPage.IconDesigner.name,
+            SettingsPage.ListAppearance.name, SettingsPage.Alphabet.name, SettingsPage.GraceButtonAppearance.name, SettingsPage.GraceButtonPosition.name))
             Color.Transparent else MaterialTheme.colorScheme.surfaceContainer),
         enterTransition = { settingsEnter(distance) },
         exitTransition = { settingsExit(distance) },
@@ -190,17 +192,12 @@ fun LauncherSettingsScreen(
                 } else when (page) {
                     SettingsPage.Root -> SettingsHome(uiState.isDefaultHome, actions.requestDefaultHome, back, navigate)
                     SettingsPage.Productivity -> ProductivitySettings(uiState, actions, back, navigate)
-                    SettingsPage.Clock -> ClockSettings(uiState, actions, back)
+                    SettingsPage.Clock -> ClockSettings(uiState, actions, back) { navigate(SettingsPage.ClockStyle) }
                     SettingsPage.Search -> SearchSettingsScreen(uiState, actions, back)
                     SettingsPage.ShortcutsFolders -> ShortcutsFoldersSettingsScreen(uiState, actions, back)
-                    SettingsPage.MediaPlayer -> MediaPlayerSettings(uiState, actions, back)
+                    SettingsPage.MediaPlayer -> MediaPlayerSettings(uiState, actions, back) { navigate(SettingsPage.MediaPlayerAppearance) }
                     SettingsPage.GraceButton, SettingsPage.Gestures -> GraceButtonSettingsScreen(uiState, actions, back,
-                        home = page == SettingsPage.Gestures, onEditIcon = {
-                            if (isCurrent()) {
-                                navController.navigate(SettingsPage.IconDesigner.name)
-                                navController.currentBackStackEntry?.savedStateHandle?.set("icon_designer_app", GraceButtonIcon.key)
-                            }
-                        }) { gesture ->
+                        home = page == SettingsPage.Gestures, onAppearance = { navigate(SettingsPage.GraceButtonAppearance) }) { gesture ->
                         if (isCurrent()) navController.navigate("${SettingsPage.GraceAction.name}/${gesture.name}?home=${page == SettingsPage.Gestures}") { launchSingleTop = true }
                     }
                     SettingsPage.GraceAction -> {
@@ -262,11 +259,19 @@ fun LauncherSettingsScreen(
                                 }
                             })
                     }
-                    SettingsPage.Weather -> WeatherSettings(uiState, actions, back)
+                    SettingsPage.Weather -> WeatherSettings(uiState, actions, back) { navigate(SettingsPage.WeatherAppearance) }
                     SettingsPage.Themes -> ThemeSettings(uiState, actions, back,
                         onClockStyle = { navigate(SettingsPage.ClockStyle) }, onIconPacks = { navigate(SettingsPage.IconPacks) },
                         onFonts = { navigate(SettingsPage.Fonts) }, onListAppearance = { navigate(SettingsPage.ListAppearance) },
-                        onAlphabet = { navigate(SettingsPage.Alphabet) })
+                        onAlphabet = { navigate(SettingsPage.Alphabet) }, onGraceButton = { navigate(SettingsPage.GraceButtonAppearance) },
+                        onCalendar = { navigate(SettingsPage.CalendarAppearance) }, onWeather = { navigate(SettingsPage.WeatherAppearance) },
+                        onMediaPlayer = { navigate(SettingsPage.MediaPlayerAppearance) })
+                    SettingsPage.GraceButtonAppearance -> IconDesignerSettings(uiState, actions, GraceButtonIcon.key, back,
+                        onChooseApp = {}, onSelectApp = {}, onPositionAndSize = { navigate(SettingsPage.GraceButtonPosition) })
+                    SettingsPage.GraceButtonPosition -> GraceButtonPositionSettings(uiState, actions, back)
+                    SettingsPage.CalendarAppearance -> AppearancePlaceholder(stringResource(R.string.widget_calendar), "calendar_appearance", back)
+                    SettingsPage.WeatherAppearance -> AppearancePlaceholder(stringResource(R.string.settings_weather), "weather_appearance", back)
+                    SettingsPage.MediaPlayerAppearance -> AppearancePlaceholder(stringResource(R.string.settings_media_player), "media_appearance", back)
                     SettingsPage.ClockStyle -> ClockStyleSettings(uiState, actions, back) { navigate(SettingsPage.Fonts) }
                     SettingsPage.Fonts -> FontSettings(uiState, actions, back)
                     SettingsPage.ListAppearance -> ListAppearanceSettings(uiState, actions, back) { navigate(SettingsPage.Fonts) }
@@ -289,7 +294,7 @@ fun LauncherSettingsScreen(
                             }
                         },
                     )
-                    SettingsPage.Calendar -> CalendarSettings(uiState, actions, back)
+                    SettingsPage.Calendar -> CalendarSettings(uiState, actions, back) { navigate(SettingsPage.CalendarAppearance) }
                     SettingsPage.Advanced -> AdvancedSettings(back, navigate)
                     SettingsPage.LabGraceButton -> LabGraceButtonSettings(uiState, actions, back)
                     SettingsPage.LabGesture -> LabGestureSettings(uiState, actions, back)

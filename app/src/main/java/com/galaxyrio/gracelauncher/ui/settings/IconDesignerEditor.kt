@@ -50,6 +50,7 @@ private enum class DesignerPage { Single, All, Data }
 internal fun IconDesignerSettings(
     uiState: LauncherUiState, actions: LauncherActions, selectedKey: String?, onBack: () -> Unit,
     onChooseApp: () -> Unit, onSelectApp: (String) -> Unit, fallbackApp: LauncherApp? = null,
+    onPositionAndSize: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val repository = remember(context) { IconPackRepository(context) }
@@ -94,6 +95,7 @@ internal fun IconDesignerSettings(
         when {
             target == "exit" -> scope.launch { cleanImports(); onBack() }
             target == "choose" -> onChooseApp()
+            target == "position" -> onPositionAndSize?.invoke()
             target.startsWith("page:") -> {
                 colorPicker = null; sourcePicker = false; selection = emptyList()
                 if (target == "page:Single" && !specialSaved) {
@@ -190,7 +192,8 @@ internal fun IconDesignerSettings(
     val themeColors = store.themeColors(uiState.settings)
     val shared = bulkChoice.design ?: sharedDesignerDefaults(uiState)
     LaunchedEffect(uiState.itemIcons.keys) { selection = selection.filter { it in uiState.itemIcons } }
-    SettingsScaffold(stringResource(R.string.icon_designer_title), "icon_designer", back, fixedCollapsed = true,
+    SettingsScaffold(stringResource(if (onPositionAndSize != null) R.string.settings_grace_button else R.string.icon_designer_title),
+        "icon_designer", back, fixedCollapsed = true,
         actions = {
             if (page == DesignerPage.Data) {
                 if (selection.isNotEmpty()) Text(selection.size.toString(), style = MaterialTheme.typography.labelLarge)
@@ -248,11 +251,12 @@ internal fun IconDesignerSettings(
                             onSwitch = { request("choose") }, onSource = { sourcePicker = true }, onColor = { colorPicker = it },
                             onCloseColor = { colorPicker = null }, onChange = ::changeDesign,
                             showSuggestions = !isAll && button,
+                            onPositionAndSize = onPositionAndSize?.let { { request("position") } },
                             onSuggestion = { change(ItemIcon("symbol", name = it, design = design)) }, modifier = Modifier.weight(1f))
                     }
                 }
             }
-            if (colorPicker == null) HorizontalFloatingToolbar(expanded = true,
+            if (colorPicker == null && onPositionAndSize == null) HorizontalFloatingToolbar(expanded = true,
                 colors = FloatingToolbarDefaults.standardFloatingToolbarColors(toolbarContainerColor = MaterialTheme.colorScheme.surfaceBright),
                 expandedShadowElevation = 3.dp,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = FloatingToolbarDefaults.ScreenOffset + LocalSettingsBottomInset.current)
@@ -281,7 +285,8 @@ internal fun IconDesignerSettings(
 private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolean, enabled: Boolean,
     appLabel: String?, sourceLabel: String, dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, defaults: IconDesign, color: String?,
     onSwitch: () -> Unit, onSource: () -> Unit, onColor: (String) -> Unit, onCloseColor: () -> Unit,
-    onChange: (IconDesign) -> Unit, showSuggestions: Boolean, onSuggestion: (String) -> Unit, modifier: Modifier = Modifier) {
+    onChange: (IconDesign) -> Unit, showSuggestions: Boolean, onSuggestion: (String) -> Unit,
+    onPositionAndSize: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     val design = choice.design ?: IconDesign()
     val heroSpec = MaterialTheme.motionScheme.slowSpatialSpec<Rect>()
     val heroBounds = remember(heroSpec) { BoundsTransform { _, _ -> heroSpec } }
@@ -292,14 +297,15 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
             transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) }, label = "iconDesignerColorHero") { activeColor ->
             val visibility = this
             if (activeColor == null) LazyColumn(Modifier.fillMaxSize().testTag("icon_designer_controls"), state = list,
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap), contentPadding = PaddingValues(bottom = 88.dp + LocalSettingsBottomInset.current)) {
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+                contentPadding = PaddingValues(bottom = (if (onPositionAndSize == null) 88.dp else 24.dp) + LocalSettingsBottomInset.current)) {
                 iconDesignerControls(all, enabled, appLabel, sourceLabel, design, layered, dynamicColors, themeColors, defaults,
                     onSwitch, onSource, onColor, onChange,
                     showSuggestions = showSuggestions, suggestion = when (choice.kind) {
                         "symbol" -> choice.name
                         "system", "theme" -> GraceButtonIcon.Suggestion.Default.id
                         else -> null
-                    }, onSuggestion = onSuggestion,
+                    }, onSuggestion = onSuggestion, onPositionAndSize = onPositionAndSize,
                     colorModifier = { field -> Modifier.sharedBounds(rememberSharedContentState("color:$field"), visibility,
                         boundsTransform = heroBounds, clipInOverlayDuringTransition = OverlayClip(shape)) })
             } else {

@@ -60,6 +60,7 @@ import kotlin.math.roundToInt
 internal fun ThemeSettings(
     uiState: LauncherUiState, actions: LauncherActions, onBack: () -> Unit,
     onClockStyle: () -> Unit, onIconPacks: () -> Unit, onFonts: () -> Unit, onListAppearance: () -> Unit, onAlphabet: () -> Unit,
+    onGraceButton: () -> Unit = {}, onCalendar: () -> Unit = {}, onWeather: () -> Unit = {}, onMediaPlayer: () -> Unit = {},
 ) {
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     val settings = uiState.settings
@@ -106,7 +107,7 @@ internal fun ThemeSettings(
             }
             item { SettingsHeading(stringResource(R.string.settings_personalization)) }
             item {
-                SettingsActionItem(stringResource(R.string.settings_clock_style), uiState.settings.clockStyle.layout.label(), 0, 5, "settings_clock_style", onClick = onClockStyle)
+                SettingsActionItem(stringResource(R.string.settings_clock_style), uiState.settings.clockStyle.layout.label(), 0, 9, "settings_clock_style", onClick = onClockStyle)
             }
             item {
                 val packs = settings.enabledIconPackPackages
@@ -116,22 +117,38 @@ internal fun ThemeSettings(
                     uiState.iconPackStatus == IconPackStatus.Unavailable -> stringResource(R.string.icon_pack_unavailable)
                     else -> packNames.joinToString(" → ")
                 }
-                SettingsActionItem(stringResource(R.string.settings_icons), summary, 1, 5, "settings_icon_pack") {
+                SettingsActionItem(stringResource(R.string.settings_icons), summary, 1, 9, "settings_icon_pack") {
                     onIconPacks()
                     actions.refreshIconPacks()
                 }
             }
             item {
-                SettingsActionItem(stringResource(R.string.settings_favorites_app_list), null, 2, 5, "settings_list_appearance", onClick = onListAppearance)
+                SettingsActionItem(stringResource(R.string.settings_favorites_app_list), null, 2, 9, "settings_list_appearance", onClick = onListAppearance)
             }
             item {
-                SettingsActionItem(stringResource(R.string.settings_alphabet), null, 3, 5, "settings_alphabet", onClick = onAlphabet)
+                SettingsActionItem(stringResource(R.string.settings_alphabet), null, 3, 9, "settings_alphabet", onClick = onAlphabet)
             }
             item {
                 val fonts = settings.fontLibrary.selected.map { appFontLabel(it) }
                 val systemFont = appFontLabel("system")
                 SettingsActionItem(stringResource(R.string.settings_font), fonts.joinToString(" → ").ifEmpty { systemFont },
-                    4, 5, "settings_font", onClick = onFonts)
+                    4, 9, "settings_font", onClick = onFonts)
+            }
+            item {
+                SettingsActionItem(stringResource(R.string.settings_grace_button), null, 5, 9,
+                    "settings_grace_button_appearance", onClick = onGraceButton)
+            }
+            item {
+                SettingsActionItem(stringResource(R.string.widget_calendar), null, 6, 9,
+                    "settings_calendar_appearance", onClick = onCalendar)
+            }
+            item {
+                SettingsActionItem(stringResource(R.string.settings_weather), null, 7, 9,
+                    "settings_weather_appearance", onClick = onWeather)
+            }
+            item {
+                SettingsActionItem(stringResource(R.string.settings_media_player), null, 8, 9,
+                    "settings_media_appearance", onClick = onMediaPlayer)
             }
             item { SettingsHeading(stringResource(R.string.settings_misc)) }
             item {
@@ -139,6 +156,18 @@ internal fun ThemeSettings(
                     stringResource(R.string.settings_hide_status_bar), stringResource(R.string.settings_hide_status_bar_summary),
                     settings.hideStatusBar, 0, 1, "settings_hide_status_bar",
                 ) { value -> actions.updateSettings { it.copy(hideStatusBar = value) } }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun AppearancePlaceholder(title: String, tag: String, onBack: () -> Unit) {
+    SettingsScaffold(title, tag, onBack) { padding ->
+        SettingsList(padding) {
+            item {
+                Text(stringResource(R.string.settings_coming_soon), Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

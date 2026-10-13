@@ -92,8 +92,24 @@ internal fun renderDesignedIcon(layers: IconLayers, design: IconDesign, dynamicB
     if (style == IconDesign()) return layers.original
     val side = layers.original.width
     val output = createBitmap(side, side)
-    val canvas = Canvas(output)
+    drawDesignedIcon(Canvas(output), layers, style, dynamicBackground, dynamicForeground, themeBackground, themeForeground)
+    return output
+}
+
+/** Draw the same layers directly for previews; moving a symbol must not allocate a bitmap every frame. */
+internal fun drawDesignedIcon(canvas: Canvas, layers: IconLayers, design: IconDesign, dynamicBackground: Int, dynamicForeground: Int,
+    themeBackground: Int = dynamicBackground, themeForeground: Int = dynamicForeground) {
+    val style = design.normalized()
+    val side = layers.original.width
     val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    val checkpoint = canvas.save()
+    // A bitmap canvas used to supply these bounds implicitly. Hardware previews need them too.
+    canvas.clipRect(0f, 0f, side.toFloat(), side.toFloat())
+    if (style == IconDesign()) {
+        canvas.drawBitmap(layers.original, 0f, 0f, paint)
+        canvas.restoreToCount(checkpoint)
+        return
+    }
     val mask = if (style.shape == IconShape.None) layers.originalMask ?: if (style.addTray)
         iconShapePath(IconShape.Circle, size = side.toFloat()) else null
         else iconShapePath(style.shape, style.cookieSides, side.toFloat(), style.pebbleRoundness, style.squareCornerRadius)
@@ -115,12 +131,10 @@ internal fun renderDesignedIcon(layers: IconLayers, design: IconDesign, dynamicB
     val centerX = side * (0.5f + style.x / 100f)
     val centerY = side * (0.5f + style.y / 100f)
     val half = side * scale / 2f
-    canvas.save()
     canvas.rotate(style.rotation, centerX, centerY)
     canvas.drawBitmap(layers.symbol(foreground, style.themeUnsupportedIcons, style.invertBackgroundDetection), null,
         RectF(centerX - half, centerY - half, centerX + half, centerY + half), paint)
-    canvas.restore()
-    return output
+    canvas.restoreToCount(checkpoint)
 }
 
 private fun hasVisibleSymbol(bitmap: Bitmap): Boolean {

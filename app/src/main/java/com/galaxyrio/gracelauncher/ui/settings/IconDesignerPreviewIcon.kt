@@ -8,7 +8,7 @@ import android.graphics.Paint
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.InsetDrawable
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
@@ -23,8 +23,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -40,11 +41,9 @@ import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.icons.IconLayers
 import com.galaxyrio.gracelauncher.data.icons.ItemIconStore
 import com.galaxyrio.gracelauncher.data.icons.iconLayers
-import com.galaxyrio.gracelauncher.data.icons.renderDesignedIcon
+import com.galaxyrio.gracelauncher.data.icons.drawDesignedIcon
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.AppIcon
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -54,10 +53,9 @@ import kotlin.math.sin
 internal fun DesignerPreviewIcon(app: LauncherApp, layers: IconLayers?, design: IconDesign, dynamicColors: Pair<Int, Int>,
     size: Dp, modifier: Modifier = Modifier, draggable: Boolean = false, themeColors: Pair<Int, Int> = dynamicColors,
     onChange: (IconDesign) -> Unit = {}) {
-    val bitmap by produceState<ImageBitmap?>(layers?.original?.asImageBitmap(), layers, design, dynamicColors, themeColors) {
-        value = layers?.let { withContext(Dispatchers.Default) { renderDesignedIcon(it, design, dynamicColors.first, dynamicColors.second,
-            themeColors.first, themeColors.second).asImageBitmap() } }
-    }
+    // Only the drawing reads this draft. Pointer moves no longer rebuild/serialize the editor
+    // or queue 768px bitmap renders; sliders and persisted state update once on release.
+    var gestureDraft by remember(layers) { mutableStateOf<IconDesign?>(null) }
     val currentDesign by rememberUpdatedState(design)
     val changeDesign by rememberUpdatedState(onChange)
     val description = if (draggable) stringResource(R.string.icon_designer_drag_symbol, app.label) else app.label
@@ -78,44 +76,58 @@ internal fun DesignerPreviewIcon(app: LauncherApp, layers: IconLayers?, design: 
                 var zoomMotion = 1f
                 var rotationMotion = 0f
                 var panMotion = Offset.Zero
-                do {
-                    val event = awaitPointerEvent()
-                    if (event.changes.any { it.isConsumed }) break
-                    // Pinching thin symbols need not start with both fingers on ink.
-                    canTransform = canTransform || event.changes.count { it.pressed } > 1
-                    val zoom = event.calculateZoom()
-                    val rotation = event.calculateRotation()
-                    val pan = event.calculatePan()
-                    if (canTransform && !pastSlop) {
-                        zoomMotion *= zoom
-                        rotationMotion += rotation
-                        panMotion += pan
-                        val radius = event.calculateCentroidSize(useCurrent = false)
-                        pastSlop = abs(1f - zoomMotion) * radius > viewConfiguration.touchSlop ||
-                            abs(rotationMotion) * Math.PI.toFloat() / 180f * radius > viewConfiguration.touchSlop ||
-                            panMotion.getDistance() > viewConfiguration.touchSlop
-                    }
-                    if (pastSlop) {
-                        val nextSize = (symbolSize * zoom).coerceIn(25f, 200f)
-                        val centroid = event.calculateCentroid(useCurrent = false)
-                        if (centroid != Offset.Unspecified) {
-                            val center = Offset(this.size.width * (.5f + style.x / 100f), this.size.height * (.5f + style.y / 100f))
-                            val moved = centroid + (center - centroid).rotated(rotation) * (nextSize / symbolSize) + pan
-                            style = style.copy(
-                                x = (moved.x / this.size.width - .5f) * 100f,
-                                y = (moved.y / this.size.height - .5f) * 100f,
-                                size = nextSize.roundToInt(),
-                                rotation = ((style.rotation + rotation + 180f) % 360f + 360f) % 360f - 180f,
-                            ).normalized()
-                            symbolSize = nextSize
-                            changeDesign(style)
+                try {
+                    do {
+                        val event = awaitPointerEvent()
+                        if (event.changes.any { it.isConsumed }) break
+                        // Pinching thin symbols need not start with both fingers on ink.
+                        canTransform = canTransform || event.changes.count { it.pressed } > 1
+                        val zoom = event.calculateZoom()
+                        val rotation = event.calculateRotation()
+                        val pan = event.calculatePan()
+                        if (canTransform && !pastSlop) {
+                            zoomMotion *= zoom
+                            rotationMotion += rotation
+                            panMotion += pan
+                            val radius = event.calculateCentroidSize(useCurrent = false)
+                            pastSlop = abs(1f - zoomMotion) * radius > viewConfiguration.touchSlop ||
+                                abs(rotationMotion) * Math.PI.toFloat() / 180f * radius > viewConfiguration.touchSlop ||
+                                panMotion.getDistance() > viewConfiguration.touchSlop
                         }
-                        event.changes.forEach { if (it.positionChanged()) it.consume() }
-                    }
-                } while (event.changes.any { it.pressed })
+                        if (pastSlop) {
+                            val nextSize = (symbolSize * zoom).coerceIn(25f, 200f)
+                            val centroid = event.calculateCentroid(useCurrent = false)
+                            if (centroid != Offset.Unspecified) {
+                                val center = Offset(this.size.width * (.5f + style.x / 100f), this.size.height * (.5f + style.y / 100f))
+                                val moved = centroid + (center - centroid).rotated(rotation) * (nextSize / symbolSize) + pan
+                                style = style.copy(
+                                    x = (moved.x / this.size.width - .5f) * 100f,
+                                    y = (moved.y / this.size.height - .5f) * 100f,
+                                    size = nextSize.roundToInt(),
+                                    rotation = ((style.rotation + rotation + 180f) % 360f + 360f) % 360f - 180f,
+                                ).normalized()
+                                symbolSize = nextSize
+                                gestureDraft = style
+                            }
+                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                    if (pastSlop) changeDesign(style)
+                } finally {
+                    gestureDraft = null
+                }
             }
         }), contentAlignment = Alignment.Center) {
-        if (bitmap != null) Image(bitmap!!, null, Modifier.fillMaxSize()) else AppIcon(app, size = size, applyDisplaySize = false)
+        if (layers != null) ComposeCanvas(Modifier.fillMaxSize()) {
+            drawIntoCanvas { target ->
+                val canvas = target.nativeCanvas
+                val checkpoint = canvas.save()
+                canvas.scale(this.size.width / layers.original.width, this.size.height / layers.original.height)
+                drawDesignedIcon(canvas, layers, gestureDraft ?: design, dynamicColors.first, dynamicColors.second,
+                    themeColors.first, themeColors.second)
+                canvas.restoreToCount(checkpoint)
+            }
+        } else AppIcon(app, size = size, applyDisplaySize = false)
     }
 }
 

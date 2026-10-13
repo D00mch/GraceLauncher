@@ -11,6 +11,15 @@
     <string name="media_idle_summary">Tap play to resume</string>
     <string name="settings_none">None</string>
     <string name="settings_grace_button">Grace button</string>
+    <string name="grace_button_position_size">Position and size</string>
+    <string name="grace_button_alignment">Alignment</string>
+    <string name="grace_button_align_left">Left</string>
+    <string name="grace_button_align_center">Center</string>
+    <string name="grace_button_align_right">Right</string>
+    <string name="grace_button_side_distance">Distance from side</string>
+    <string name="grace_button_bottom_distance">Distance from bottom</string>
+    <string name="grace_button_size">Button size</string>
+    <string name="grace_button_position_hint">Drag the button to change its position</string>
     <string name="grace_button_enable">Enable Grace button</string>
     <string name="grace_button_tap">Single tap</string>
     <string name="grace_button_long_press">Long press</string>

@@ -43,6 +43,7 @@ internal fun LazyListScope.iconDesignerControls(
     onSwitch: () -> Unit, onSource: () -> Unit,
     onColor: (String) -> Unit, onChange: (IconDesign) -> Unit,
     showSuggestions: Boolean = false, suggestion: String? = null, onSuggestion: (String) -> Unit = {},
+    onPositionAndSize: (() -> Unit)? = null,
     colorModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
     val cookie = design.shape == IconShape.Cookie
@@ -53,7 +54,10 @@ internal fun LazyListScope.iconDesignerControls(
     var index = 0
     if (!all) {
         val position = index++
-        item("switch") { SettingsActionItem(stringResource(R.string.icon_designer_switch_app), appLabel,
+        if (onPositionAndSize != null) {
+            item("button_position") { SettingsActionItem(stringResource(R.string.grace_button_position_size), null,
+                position, count, "grace_button_position_size", enabled = enabled, onClick = onPositionAndSize) }
+        } else item("switch") { SettingsActionItem(stringResource(R.string.icon_designer_switch_app), appLabel,
             position, count, "icon_designer_switch", onClick = onSwitch) }
         val sourceIndex = index++
         item("source") { SettingsActionItem(stringResource(R.string.icon_designer_source), sourceLabel,
