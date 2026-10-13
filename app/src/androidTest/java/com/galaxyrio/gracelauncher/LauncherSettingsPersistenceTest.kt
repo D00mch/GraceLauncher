@@ -9,6 +9,9 @@ import com.galaxyrio.gracelauncher.data.AlphabetAppearance
 import com.galaxyrio.gracelauncher.data.IconColor
 import com.galaxyrio.gracelauncher.data.IconShape
 import com.galaxyrio.gracelauncher.data.ListAppearance
+import com.galaxyrio.gracelauncher.data.IconDisplaySettings
+import com.galaxyrio.gracelauncher.data.IconDisplayStyle
+import com.galaxyrio.gracelauncher.data.IconDotColor
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.LauncherDatabase
 import com.galaxyrio.gracelauncher.data.SearchSettings
@@ -349,6 +352,49 @@ class LauncherSettingsPersistenceTest {
         assertTrue(snapshot.folders.isEmpty())
         assertEquals(favoritesBefore, favorites.all)
         assertEquals(appearanceBefore, appearance.all)
+    }
+
+    @Test
+    fun iconDisplaySurvivesRoundTripInsideIconDesignJson() = runBlocking {
+        val repository = openRepository()
+        val dotted = IconDisplaySettings(style = IconDisplayStyle.Dot, dotColor = IconDotColor.Theme, dotSize = 18)
+        repository.updateSettings(LauncherSettings(iconDesign = ItemIcon.Theme.copy(display = dotted)))
+        val restored = withTimeout(10_000) { openRepository().snapshots.first().settings }
+        // The shared display is derived from the bulk icon design, same field per-app
+        // overrides use; the whole ItemIcon round-trips intact.
+        assertEquals(ItemIcon.Theme.copy(display = dotted), restored.iconDesign)
+        assertEquals(dotted, restored.iconDisplay)
+
+        // Hidden does not rewrite the stored name preference — rows force labels
+        // themselves, so the flag survives a Full→Hidden→Full round-trip.
+        // Reopen above closed the first database; write through a live one.
+        openRepository().updateSettings(restored.copy(hideFavoriteNames = true,
+            iconDesign = ItemIcon.Theme.copy(display = IconDisplaySettings(style = IconDisplayStyle.Hidden))))
+        val hidden = withTimeout(10_000) { openRepository().snapshots.first().settings }
+        assertEquals(IconDisplayStyle.Hidden, hidden.iconDisplay.style)
+        assertTrue(hidden.hideFavoriteNames)
+    }
+
+    @Test
+    fun missingAndMalformedIconDisplayJsonFallBackToFullIcons() {
+        assertEquals(IconDisplaySettings(), IconDisplaySettings.decode(null))
+        assertEquals(IconDisplaySettings(), IconDisplaySettings.decode("not json"))
+        assertEquals(IconDisplaySettings(), IconDisplaySettings.decode("{}"))
+        // Unknown enum names and out-of-range sizes degrade field by field.
+        assertEquals(IconDisplaySettings(style = IconDisplayStyle.Dot, dotSize = 32),
+            IconDisplaySettings.decode("""{"style":"Dot","dotColor":"bogus","dotSize":99}"""))
+    }
+
+    @Test
+    fun itemIconDisplayOverrideSurvivesEncodeAndStaysAbsentByDefault() {
+        val override = IconDisplaySettings(style = IconDisplayStyle.Dot,
+            dotColor = IconDotColor.Custom, dotSize = 14, customColor = IconColor(0xFF336699.toInt()))
+        val icon = ItemIcon("pack", "icons", "name", display = override)
+        assertEquals(override, ItemIcon.decode(icon.encode())?.display)
+        // No override stays null so the app keeps inheriting the shared setting.
+        assertEquals(null, ItemIcon.decode(ItemIcon.Theme.encode())?.display)
+        // Icons saved before display overrides existed decode the same way.
+        assertEquals(null, ItemIcon.decode("""{"kind":"theme"}""")?.display)
     }
 
     @Test

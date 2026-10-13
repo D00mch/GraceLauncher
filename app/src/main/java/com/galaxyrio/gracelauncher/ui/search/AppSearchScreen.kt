@@ -57,6 +57,7 @@ import com.galaxyrio.gracelauncher.ui.components.GraceButtonTransition
 import com.galaxyrio.gracelauncher.ui.components.observeListGestures
 import com.galaxyrio.gracelauncher.ui.components.rememberLauncherListGestureConnection
 import com.galaxyrio.gracelauncher.ui.theme.LocalLauncherAppearance
+import com.galaxyrio.gracelauncher.ui.theme.effectiveDisplay
 import kotlinx.coroutines.delay
 
 private sealed interface SearchResult {
@@ -195,10 +196,12 @@ internal fun AppSearchScreen(
                     is SearchResult.Contact -> result.contact.name
                     SearchResult.Internet -> stringResource(R.string.search_internet_result)
                 }
+                val resultDisplay = (result as? SearchResult.App)?.app?.effectiveDisplay(appearance)
                 SearchResultRow(label, result.key, first = index == 0, onClick = { open(result, it) },
+                    hideIcon = resultDisplay?.style == IconDisplayStyle.Hidden,
                     onLongClick = (result as? SearchResult.App)?.let { { keyboard?.hide(); onDetails(it.app) } }) { iconModifier ->
                     when (result) {
-                        is SearchResult.App -> AppIcon(result.app, iconModifier, size = 40.dp)
+                        is SearchResult.App -> AppIcon(result.app, iconModifier, size = 40.dp, display = resultDisplay!!)
                         is SearchResult.Contact -> ContactAvatar(result.contact, contactsSource, iconModifier)
                         SearchResult.Internet -> Surface(modifier = iconModifier.size(40.dp), shape = CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
@@ -225,16 +228,19 @@ internal fun AppSearchScreen(
 }
 
 @Composable
-private fun SearchResultRow(label: String, key: String, first: Boolean, onClick: (Rect) -> Unit,
+private fun SearchResultRow(label: String, key: String, first: Boolean, hideIcon: Boolean = false, onClick: (Rect) -> Unit,
     onLongClick: (() -> Unit)?, icon: @Composable (Modifier) -> Unit) {
     val appearance = LocalLauncherAppearance.current
     var bounds by remember { mutableStateOf(Rect.Zero) }
     Row(Modifier.fillMaxWidth().heightIn(min = LauncherLayout.RowMinHeight).testTag(key)
         .clip(LauncherLayout.RowShape).combinedClickable(onClick = { onClick(bounds) }, onLongClick = onLongClick)
         .semantics { selected = first }.padding(LauncherLayout.ContentInset), verticalAlignment = Alignment.CenterVertically) {
-        icon(Modifier.onGloballyPositioned { bounds = it.boundsInWindow() })
-        Spacer(Modifier.width(LauncherLayout.IconLabelGap))
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+        if (!hideIcon) {
+            icon(Modifier.onGloballyPositioned { bounds = it.boundsInWindow() })
+            Spacer(Modifier.width(LauncherLayout.IconLabelGap))
+        }
+        Row(Modifier.weight(1f).then(if (hideIcon) Modifier.onGloballyPositioned { bounds = it.boundsInWindow() } else Modifier),
+            verticalAlignment = Alignment.CenterVertically) {
             Text(label, Modifier.weight(1f, fill = false).testTag(key + ":label"), color = appearance.text,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = if (first) FontWeight.Bold else FontWeight.Normal, shadow = appearance.textShadow),
                 maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -27,6 +27,7 @@ import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.IconDesign
+import com.galaxyrio.gracelauncher.data.IconDisplayStyle
 import com.galaxyrio.gracelauncher.data.icons.IconLayers
 import com.galaxyrio.gracelauncher.data.icons.ItemIconStore
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
@@ -44,7 +45,8 @@ internal fun IconDesignerPreview(
     onChange: (IconDesign) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val appearance = rememberLauncherAppearance(uiState.textMode, uiState.themedIcons)
+    val appearance = rememberLauncherAppearance(uiState.textMode, uiState.themedIcons,
+        iconDisplay = choice.display ?: uiState.settings.iconDisplay)
     val shape = ListItemDefaults.segmentedShapes(0, 1).shape
     Box(modifier.fillMaxWidth().testTag("icon_designer_preview").drawWithContent {
         // Match Clock style's window onto the real wallpaper, including live wallpapers.
@@ -64,8 +66,23 @@ internal fun IconDesignerPreview(
                     ) {
                         LauncherIcon(LauncherSymbol.Plus, Modifier.size(32.dp), MaterialTheme.colorScheme.onPrimaryContainer)
                     }
-                } else DesignerPreviewIcon(selectedApp, layers, design, dynamicColors, 160.dp * (design.iconSize / 100f),
-                    Modifier.testTag("icon_designer_selected_app"), draggable = enabled, onChange = onChange, themeColors = themeColors)
+                } else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    DesignerPreviewIcon(selectedApp, layers, design, dynamicColors, 160.dp * (design.iconSize / 100f),
+                        Modifier.testTag("icon_designer_selected_app"), draggable = enabled, onChange = onChange, themeColors = themeColors)
+                    // How the app reads on a launcher row under the resolved display style.
+                    val rowDisplay = choice.display ?: uiState.settings.iconDisplay
+                    Row(Modifier.align(Alignment.BottomCenter).testTag("icon_designer_display_result")
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), MaterialTheme.shapes.medium)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        if (rowDisplay.style != IconDisplayStyle.Hidden) {
+                            DesignerDisplayedIcon(selectedApp, layers, design, dynamicColors, themeColors, 28.dp, rowDisplay)
+                            Spacer(Modifier.width(10.dp))
+                        }
+                        Text(selectedApp.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelLarge)
+                    }
+                }
             }
         }
     }
@@ -96,11 +113,15 @@ private fun AllIconsPreview(uiState: LauncherUiState, choice: ItemIcon, store: I
                 Row(Modifier.fillMaxWidth().heightIn(min = LauncherLayout.RowMinHeight).testTag("icon_designer_row:$row")
                     .semantics(mergeDescendants = true) { contentDescription = "${categories[row]} · $label" }
                     .padding(LauncherLayout.ContentInset), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.testTag("icon_designer_icon:$row:0")) {
-                        if (app != null) DesignerBulkPreviewIcon(app, uiState, choice, store, dynamicColors, themeColors, iconSize)
-                        else DesignerSamplePreviewIcon(row, choice, dynamicColors, themeColors, iconSize)
+                    // Rows preview the resolved display: per-item override, else the shared draft.
+                    val rowDisplay = (app?.let { uiState.itemIcons[it.key]?.display } ?: appearance.iconDisplay)
+                    if (rowDisplay.style != IconDisplayStyle.Hidden) {
+                        Box(Modifier.testTag("icon_designer_icon:$row:0")) {
+                            if (app != null) DesignerDisplayRowIcon(app, uiState, choice, store, dynamicColors, themeColors, iconSize, rowDisplay)
+                            else DesignerSampleDisplayIcon(row, choice, dynamicColors, themeColors, iconSize, rowDisplay)
+                        }
+                        Spacer(Modifier.width(LauncherLayout.IconLabelGap))
                     }
-                    Spacer(Modifier.width(LauncherLayout.IconLabelGap))
                     Text(label, color = appearance.text,
                         style = MaterialTheme.typography.bodyLarge.merge(TextStyle(fontWeight = FontWeight.Normal,
                             letterSpacing = 0.2.sp, shadow = appearance.textShadow)),

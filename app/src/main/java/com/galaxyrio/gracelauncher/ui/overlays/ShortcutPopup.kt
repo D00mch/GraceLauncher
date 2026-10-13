@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import com.galaxyrio.gracelauncher.R
+import com.galaxyrio.gracelauncher.data.IconDisplayStyle
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.LauncherFolder
 import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
@@ -52,6 +53,8 @@ import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
 import com.galaxyrio.gracelauncher.ui.components.LauncherSymbol
 import com.galaxyrio.gracelauncher.ui.components.LocalListAppearance
 import com.galaxyrio.gracelauncher.ui.components.listLabelStyle
+import com.galaxyrio.gracelauncher.ui.theme.LocalLauncherAppearance
+import com.galaxyrio.gracelauncher.ui.theme.effectiveDisplay
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -194,9 +197,11 @@ fun ShortcutPopup(
                 }
                 itemApp != null -> {
                         var iconBounds by remember { mutableStateOf(Rect.Zero) }
+                        val itemDisplay = itemApp.effectiveDisplay(LocalLauncherAppearance.current)
+                        val hiddenIcon = itemDisplay.style == IconDisplayStyle.Hidden
                         Row(
                             Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(if (isFolder) "folder_app:${itemApp.key}" else "shortcut:${itemApp.shortcut?.id ?: itemApp.key}")
-                                .semantics { if (!showNames) contentDescription = itemApp.label }
+                                .semantics { if (!showNames && !hiddenIcon) contentDescription = itemApp.label }
                                 .clip(RoundedCornerShape(16.dp))
                                 .combinedClickable(enabled = !reveal.dragging && reveal.expanded, onLongClick = { onDetails(itemApp) }, onClick = {
                                     onLaunchItem(itemApp, iconBounds)
@@ -204,10 +209,16 @@ fun ShortcutPopup(
                                 }).padding(horizontal = 12.dp, vertical = (listAppearance.appSpacing / 2f).dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            AppIcon(itemApp, Modifier.onGloballyPositioned { iconBounds = it.boundsInWindow() }, size = 36.dp)
-                            if (showNames) {
-                                Spacer(Modifier.width(listAppearance.iconNameGap.dp))
-                                Text(itemApp.label, style = labelStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            if (hiddenIcon) {
+                                Text(itemApp.label, Modifier.onGloballyPositioned { iconBounds = it.boundsInWindow() },
+                                    style = labelStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            } else {
+                                AppIcon(itemApp, Modifier.onGloballyPositioned { iconBounds = it.boundsInWindow() },
+                                    size = 36.dp, display = itemDisplay)
+                                if (showNames) {
+                                    Spacer(Modifier.width(listAppearance.iconNameGap.dp))
+                                    Text(itemApp.label, style = labelStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
                             }
                         }
                 }

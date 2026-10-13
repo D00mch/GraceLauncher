@@ -23,6 +23,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -36,14 +38,21 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.IconDesign
+import com.galaxyrio.gracelauncher.data.IconDisplaySettings
+import com.galaxyrio.gracelauncher.data.IconDisplayStyle
+import com.galaxyrio.gracelauncher.data.IconDotColor
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.LauncherApp
+import com.galaxyrio.gracelauncher.data.icons.IconDominantColor
 import com.galaxyrio.gracelauncher.data.icons.IconLayers
 import com.galaxyrio.gracelauncher.data.icons.ItemIconStore
 import com.galaxyrio.gracelauncher.data.icons.iconLayers
 import com.galaxyrio.gracelauncher.data.icons.drawDesignedIcon
+import com.galaxyrio.gracelauncher.data.icons.renderDesignedIcon
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.AppIcon
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -131,6 +140,28 @@ internal fun DesignerPreviewIcon(app: LauncherApp, layers: IconLayers?, design: 
     }
 }
 
+/** The designed artwork as the launcher row will show it: full icon, dot, or nothing. */
+@Composable
+internal fun DesignerDisplayedIcon(app: LauncherApp, layers: IconLayers?, design: IconDesign,
+    dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp,
+    display: IconDisplaySettings, modifier: Modifier = Modifier) {
+    val bitmap by produceState<ImageBitmap?>(null, layers, design, dynamicColors, themeColors) {
+        value = layers?.let { withContext(Dispatchers.Default) { renderDesignedIcon(it, design,
+            dynamicColors.first, dynamicColors.second, themeColors.first, themeColors.second).asImageBitmap() } }
+    }
+    val artwork = bitmap ?: app.icon
+    val iconColor = remember(artwork, display, dynamicColors, themeColors) {
+        if (display.style == IconDisplayStyle.Dot) when (display.dotColor) {
+            IconDotColor.Artwork -> artwork?.asAndroidBitmap()?.let(IconDominantColor::of)
+            IconDotColor.Custom -> display.customColor?.resolve(dynamicColors.first, themeColors.first)
+            IconDotColor.Theme -> null
+        } else null
+    }
+    AppIcon(remember(app, artwork, iconColor) {
+        app.copy(icon = artwork, iconColor = iconColor)
+    }, modifier, size = size, applyDisplaySize = false, display = display)
+}
+
 private fun Offset.rotated(degrees: Float): Offset {
     val radians = degrees * Math.PI.toFloat() / 180f
     val cosine = cos(radians)
@@ -152,12 +183,27 @@ internal fun DesignerBulkPreviewIcon(app: LauncherApp, uiState: LauncherUiState,
     DesignerPreviewIcon(app, layers, design, dynamicColors, size, themeColors = themeColors)
 }
 
+/** Bulk-grid row honoring a resolved display: override design, then dot/hidden. */
 @Composable
-internal fun DesignerSamplePreviewIcon(row: Int, choice: ItemIcon,
-    dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp) {
+internal fun DesignerDisplayRowIcon(app: LauncherApp, uiState: LauncherUiState, choice: ItemIcon,
+    store: ItemIconStore, dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp,
+    display: IconDisplaySettings) {
+    val single = uiState.itemIcons[app.key]
+    val source = single ?: ItemIcon.Theme
+    val shared = choice.design ?: IconDesign.defaults(uiState.themedIcons)
+    val design = single?.design?.withThemeDefaults(shared) ?: shared
+    val layers by produceState<IconLayers?>(null, app.key, source.kind, source.source, source.name,
+        uiState.settings.enabledIconPackPackages) {
+        value = store.layers(app, source, uiState.settings)
+    }
+    DesignerDisplayedIcon(app, layers, design, dynamicColors, themeColors, size, display)
+}
+
+@Composable
+private fun rememberDesignerSampleLayers(row: Int, dynamicColors: Pair<Int, Int>): IconLayers {
     val resources = LocalResources.current
     val configuration = LocalConfiguration.current
-    val original = remember(resources, configuration, row, dynamicColors) {
+    return remember(resources, configuration, row, dynamicColors) {
         val symbols = listOf(R.drawable.ms_schedule, R.drawable.ms_sunny, R.drawable.ms_hourglass_empty)
         val glyph = requireNotNull(resources.getDrawable(symbols[row], null)).mutate()
         glyph.setTint(if (row == 0) dynamicColors.second else 0xFF24354C.toInt())
@@ -171,8 +217,24 @@ internal fun DesignerSamplePreviewIcon(row: Int, choice: ItemIcon,
             IconLayers(bitmap)
         }
     }
-    val app = remember(original, row) {
-        LauncherApp(ComponentName("designer.sample$row", "Preview"), "", original.original.asImageBitmap())
-    }
-    DesignerPreviewIcon(app, original, choice.design ?: IconDesign.defaults(), dynamicColors, size, themeColors = themeColors)
+}
+
+@Composable
+private fun rememberDesignerSampleApp(row: Int, original: IconLayers): LauncherApp =
+    remember(original, row) { LauncherApp(ComponentName("designer.sample$row", "Preview"), "", original.original.asImageBitmap()) }
+
+@Composable
+internal fun DesignerSamplePreviewIcon(row: Int, choice: ItemIcon,
+    dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp) {
+    val original = rememberDesignerSampleLayers(row, dynamicColors)
+    DesignerPreviewIcon(rememberDesignerSampleApp(row, original), original, choice.design ?: IconDesign.defaults(),
+        dynamicColors, size, themeColors = themeColors)
+}
+
+@Composable
+internal fun DesignerSampleDisplayIcon(row: Int, choice: ItemIcon,
+    dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp, display: IconDisplaySettings) {
+    val original = rememberDesignerSampleLayers(row, dynamicColors)
+    DesignerDisplayedIcon(rememberDesignerSampleApp(row, original), original, choice.design ?: IconDesign.defaults(),
+        dynamicColors, themeColors, size, display)
 }

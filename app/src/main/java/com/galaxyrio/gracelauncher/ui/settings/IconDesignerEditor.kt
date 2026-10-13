@@ -32,7 +32,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.galaxyrio.gracelauncher.R
+import com.galaxyrio.gracelauncher.data.IconColor
 import com.galaxyrio.gracelauncher.data.IconDesign
+import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.icons.IconLayers
@@ -64,7 +66,8 @@ internal fun IconDesignerSettings(
     var special by rememberSaveable(selectedKey, app?.key) { mutableStateOf(initial.encode()) }
     var specialBaseline by rememberSaveable(selectedKey, app?.key) { mutableStateOf(initial.encode()) }
     var specialSaved by rememberSaveable(selectedKey, app?.key) { mutableStateOf(selectedKey in uiState.itemIcons) }
-    var bulk by rememberSaveable { mutableStateOf(ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState)).encode()) }
+    var bulk by rememberSaveable { mutableStateOf(ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState),
+        display = uiState.settings.iconDisplay).encode()) }
     var bulkBaseline by rememberSaveable { mutableStateOf(bulk) }
     var pendingImages by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var sourcePicker by rememberSaveable { mutableStateOf(false) }
@@ -73,7 +76,8 @@ internal fun IconDesignerSettings(
     var selection by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var saving by remember { mutableStateOf(false) }
     val specialChoice = remember(special) { ItemIcon.decode(special) ?: initial }
-    val bulkChoice = remember(bulk) { ItemIcon.decode(bulk) ?: ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState)) }
+    val bulkChoice = remember(bulk) { ItemIcon.decode(bulk) ?: ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState),
+        display = uiState.settings.iconDisplay) }
     val choice = if (page == DesignerPage.All) bulkChoice else specialChoice
     val design = choice.design ?: IconDesign()
     val dirty = when (page) {
@@ -125,7 +129,7 @@ internal fun IconDesignerSettings(
     fun save(then: String? = null) {
         if (saving || page == DesignerPage.Data || (page == DesignerPage.Single && app == null)) return
         val savedPage = page
-        val saved = normalizedChoice(if (page == DesignerPage.All) ItemIcon.Theme.copy(design = design)
+        val saved = normalizedChoice(if (page == DesignerPage.All) ItemIcon.Theme.copy(design = design, display = bulkChoice.display)
             else choice.copy(design = design.copy(iconSize = if (button) 100 else bulkChoice.design?.iconSize ?: 100)))
         val savedApp = app
         saving = true
@@ -177,7 +181,8 @@ internal fun IconDesignerSettings(
     )
     if (sourcePicker) {
         IconDesignerSourceSettings(uiState, repository, store, app?.componentName,
-            onSelect = { change(it.copy(design = design)); sourcePicker = false },
+            // Picked icons arrive as fresh ItemIcons; keep the display override.
+            onSelect = { change(it.copy(design = design, display = specialChoice.display)); sourcePicker = false },
             onImport = { pendingImages = pendingImages + it.source }, onBack = { sourcePicker = false })
         return
     }
@@ -191,6 +196,23 @@ internal fun IconDesignerSettings(
     val dynamicColors = store.dynamicColors(uiState.settings)
     val themeColors = store.themeColors(uiState.settings)
     val shared = bulkChoice.design ?: sharedDesignerDefaults(uiState)
+    // Drafts can initialize before Room emits; re-seed them while still pristine so a
+    // saved override (or the shared display) is not frozen as "default" on first load.
+    val savedIcon = app?.let { uiState.itemIcons[it.key] }
+    LaunchedEffect(savedIcon, app?.key) {
+        if (normalizedChoice(specialChoice) == normalizedChoice(ItemIcon.decode(specialBaseline) ?: initial)) {
+            val seeded = initialDesignerChoice(uiState, app).encode()
+            if (seeded != special) { special = seeded; specialBaseline = seeded }
+        }
+        specialSaved = savedIcon != null
+    }
+    LaunchedEffect(uiState.settings.iconDesign, uiState.settings.iconDisplay) {
+        if (normalizedChoice(bulkChoice) == normalizedChoice(ItemIcon.decode(bulkBaseline) ?: ItemIcon.Theme)) {
+            val seeded = ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState),
+                display = uiState.settings.iconDisplay).encode()
+            if (seeded != bulk) { bulk = seeded; bulkBaseline = seeded }
+        }
+    }
     LaunchedEffect(uiState.itemIcons.keys) { selection = selection.filter { it in uiState.itemIcons } }
     SettingsScaffold(stringResource(if (onPositionAndSize != null) R.string.settings_grace_button else R.string.icon_designer_title),
         "icon_designer", back, fixedCollapsed = true,
@@ -248,11 +270,13 @@ internal fun IconDesignerSettings(
                         DesignerControlsPane(isAll, shownChoice, layered, !saving && page == displayed && (isAll || app != null),
                             app?.label, sourceLabel, dynamicColors, themeColors,
                             if (isAll) IconDesign.defaults() else if (button) GraceButtonIcon.defaults else shared, colorPicker,
+                            uiState.settings.iconDisplay,
                             onSwitch = { request("choose") }, onSource = { sourcePicker = true }, onColor = { colorPicker = it },
                             onCloseColor = { colorPicker = null }, onChange = ::changeDesign,
+                            onDisplay = { change(shownChoice.copy(display = it)) },
                             showSuggestions = !isAll && button,
                             onPositionAndSize = onPositionAndSize?.let { { request("position") } },
-                            onSuggestion = { change(ItemIcon("symbol", name = it, design = design)) }, modifier = Modifier.weight(1f))
+                            onSuggestion = { change(ItemIcon("symbol", name = it, design = design, display = shownChoice.display)) }, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -284,9 +308,10 @@ internal fun IconDesignerSettings(
 @Composable
 private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolean, enabled: Boolean,
     appLabel: String?, sourceLabel: String, dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, defaults: IconDesign, color: String?,
+    inheritedDisplay: IconDisplaySettings,
     onSwitch: () -> Unit, onSource: () -> Unit, onColor: (String) -> Unit, onCloseColor: () -> Unit,
-    onChange: (IconDesign) -> Unit, showSuggestions: Boolean, onSuggestion: (String) -> Unit,
-    onPositionAndSize: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+    onChange: (IconDesign) -> Unit, onDisplay: (IconDisplaySettings?) -> Unit, showSuggestions: Boolean,
+    onSuggestion: (String) -> Unit, onPositionAndSize: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     val design = choice.design ?: IconDesign()
     val heroSpec = MaterialTheme.motionScheme.slowSpatialSpec<Rect>()
     val heroBounds = remember(heroSpec) { BoundsTransform { _, _ -> heroSpec } }
@@ -301,6 +326,7 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
                 contentPadding = PaddingValues(bottom = (if (onPositionAndSize == null) 88.dp else 24.dp) + LocalSettingsBottomInset.current)) {
                 iconDesignerControls(all, enabled, appLabel, sourceLabel, design, layered, dynamicColors, themeColors, defaults,
                     onSwitch, onSource, onColor, onChange,
+                    display = choice.display, inheritedDisplay = inheritedDisplay, onDisplay = onDisplay,
                     showSuggestions = showSuggestions, suggestion = when (choice.kind) {
                         "symbol" -> choice.name
                         "system", "theme" -> GraceButtonIcon.Suggestion.Default.id
@@ -308,6 +334,14 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
                     }, onSuggestion = onSuggestion, onPositionAndSize = onPositionAndSize,
                     colorModifier = { field -> Modifier.sharedBounds(rememberSharedContentState("color:$field"), visibility,
                         boundsTransform = heroBounds, clipInOverlayDuringTransition = OverlayClip(shape)) })
+            } else if (activeColor == "dot") {
+                val display = choice.display ?: inheritedDisplay
+                IconDesignerColorPicker(stringResource(R.string.icon_dot_color), display.customColor,
+                    dynamicColors.first, themeColors.first, IconColor.Theme,
+                    onChange = { value -> if (enabled) onDisplay(display.copy(customColor = value ?: IconColor.Theme)) },
+                    onClose = onCloseColor,
+                    modifier = Modifier.sharedBounds(rememberSharedContentState("color:dot"), visibility,
+                        boundsTransform = heroBounds, clipInOverlayDuringTransition = OverlayClip(shape)))
             } else {
                 val background = activeColor != "foreground"
                 val title = stringResource(if (background) R.string.icon_designer_tray_color else R.string.icon_designer_symbol_color)
