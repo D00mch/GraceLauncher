@@ -187,8 +187,8 @@ internal fun GraceButton(settings: GraceButtonSettings, editing: Boolean, enable
             shadowElevation = if (!editing && design.shape == IconShape.None) 0.dp else 6.dp) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (!editing && artwork != null) Image(artwork, null, Modifier.fillMaxSize())
-                else Icon(painterResource(if (editing) R.drawable.ms_check else R.drawable.ic_grace_outline), null,
-                    Modifier.size(if (editing) 26.dp else 48.dp))
+                else Icon(painterResource(if (editing) R.drawable.ms_check else R.drawable.ic_grace_solid), null,
+                    Modifier.size(if (editing) 26.dp else 40.dp))
             }
         }
     }

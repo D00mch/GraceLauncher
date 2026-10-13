@@ -39,7 +39,7 @@ Built with Kotlin, Jetpack Compose, and Material You. The list-based layout take
 
 Weather data is provided through [Breezy Weather](https://github.com/breezy-weather/breezy-weather), which must be installed and configured separately.
 
-The app icon uses the solid Grace logo in `#FFEDC2` on `#6865A8`. Themed app icons, settings icons, and the home screen Grace button use the outline version. Vector artwork lives in [`design/icon`](design/icon); Exports preserve the full 1080px artboard proportions. Android adaptive layers use a centered 72/108 scale to compensate for the system's 72dp masked viewport within the 108dp layer; in-app glyphs use the original artwork without that compensation.
+The app icon uses the solid Grace logo in `#FFEDC2` on `#6865A8`, with a circular background for default artwork and README displays. Android adaptive icons follow the system icon shape. Themed app icons, settings icons, and the home screen Grace button also use the solid logo, tinted by the system or app theme. Vector artwork lives in [`design/icon`](design/icon); exports preserve the full 1080px artboard proportions. Android adaptive layers use a centered 72/108 scale to compensate for the system's 72dp masked viewport within the 108dp layer; in-app glyphs use the original artwork without that compensation.
 
 ## Screenshots
 

@@ -113,10 +113,10 @@ internal fun ProductivitySettings(
             item {
                 SettingsActionItem(stringResource(R.string.settings_grace_button), null,
                     5, 8, "settings_grace_button", leading = {
-                        // The artwork occupies half of its 108dp layer;
-                        // keep the same 24dp leading slot as Material Symbols.
-                        Icon(painterResource(R.drawable.ic_grace_outline), contentDescription = null,
-                            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = 2f; scaleY = 2f })
+                        // Render the artwork at 20dp inside the 24dp slot,
+                        // leaving 2dp above and below the logo.
+                        Icon(painterResource(R.drawable.ic_grace_solid), contentDescription = null,
+                            modifier = Modifier.size(24.dp).graphicsLayer { scaleX = 5f / 3f; scaleY = 5f / 3f })
                     }) { navigate(SettingsPage.GraceButton) }
             }
             item {

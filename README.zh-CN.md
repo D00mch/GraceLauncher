@@ -39,7 +39,7 @@
 
 天气数据由 [Breezy Weather](https://github.com/breezy-weather/breezy-weather) 提供，需要另行安装并配置该应用。
 
-应用图标使用 `#FFEDC2` 实心 Grace 标志与 `#6865A8` 背景；主题应用图标、设置中的标志和桌面 Grace 按钮使用 outline 版本。矢量源文件位于 [`design/icon`](design/icon)；导出图保留完整 1080px 画板的设计比例。Android 自适应图标层居中缩放为 72/108，以补偿系统在 108dp 图层中仅显示中央 72dp 的裁切；应用内标志使用原始比例，不叠加这层补偿。
+应用图标使用 `#FFEDC2` 实心 Grace 标志与 `#6865A8` 背景，默认展示和 README 使用圆形底，Android 自适应图标跟随系统图标形状；主题应用图标、设置中的标志和桌面 Grace 按钮也统一使用实心版本，由系统或应用主题着色。矢量源文件位于 [`design/icon`](design/icon)；导出图保留完整 1080px 画板的设计比例。Android 自适应图标层居中缩放为 72/108，以补偿系统在 108dp 图层中仅显示中央 72dp 的裁切；应用内标志使用原始比例，不叠加这层补偿。
 
 ## 截图
 
