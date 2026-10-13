@@ -18,10 +18,10 @@
     <string name="grace_button_open_shortcut">Abrir o atallo</string>
     <string name="grace_button_disabled">Desactivado</string>
     <string name="grace_button_double_tap">Dobre toque</string>
-    <string name="grace_button_swipe_up">Desliza cara arriba</string>
-    <string name="grace_button_swipe_down">Desliza cara a abaixo</string>
-    <string name="grace_button_swipe_left">Desliza cara á esquerda</string>
-    <string name="grace_button_swipe_right">Desliza cara á dereita</string>
+    <string name="grace_button_swipe_up">Esvara cara arriba</string>
+    <string name="grace_button_swipe_down">Esvara cara a abaixo</string>
+    <string name="grace_button_swipe_left">Esvara cara á esquerda</string>
+    <string name="grace_button_swipe_right">Esvara cara á dereita</string>
     <string name="grace_button_open_website">Abrir sitio web</string>
     <string name="grace_button_lock_screen">Apagar a pantalla</string>
     <string name="grace_button_open_app_list">Abrir a lista de aplicacións</string>
@@ -211,14 +211,14 @@
     <string name="settings_advanced">Avanzado</string>
     <string name="settings_lab">Lab</string>
     <string name="lab_animation">Animación</string>
-    <string name="lab_swipe_sensitivity">Sensibilidade de deslizamento</string>
-    <string name="lab_swipe_sensitivity_summary">Os valores máis altos facilitan a activación dos deslizamentos na pantalla de inicio e do movemento cara a abaixo para pechar a busca. O 100 % mantén os limiares predeterminados de distancia e velocidade.</string>
+    <string name="lab_swipe_sensitivity">Sensibilidade do esvarado</string>
+    <string name="lab_swipe_sensitivity_summary">Os valores máis altos facilitan a activación dos esvarados na pantalla de inicio e do movemento cara a abaixo para pechar a busca. O 100 % mantén os limiares predeterminados de distancia e velocidade.</string>
     <string name="lab_double_tap_interval">Intervalo de dobre pulsación</string>
     <string name="lab_double_tap_interval_summary">Tempo máximo entre toques nun espazo baleiro da pantalla de inicio. Un intervalo máis longo facilita o dobre toque.</string>
     <string name="lab_milliseconds">%1$d ms</string>
     <string name="lab_percentage">%1$d%%</string>
     <string name="settings_advanced_summary">Máis opcións para o teu lanzador</string>
-    <string name="settings_about">Verbo de</string>
+    <string name="settings_about">Acerca de</string>
     <string name="settings_about_summary">Grace Launcher, actualizacións e licenzas</string>
     <string name="settings_instant_access">Acceso inmediato</string>
     <string name="settings_calendar_agenda">Axenda do calendario</string>
@@ -246,7 +246,7 @@
     <string name="settings_folder_favorites">Favoritos</string>
     <string name="settings_folder_app_list">Lista de aplicacións</string>
     <string name="settings_folder_both">Favoritos e lista de aplicacións</string>
-    <string name="settings_folder_nowhere">Non se mostra</string>
+    <string name="settings_folder_nowhere">Non se amosa</string>
     <string name="settings_folder_at_bottom">Colocar na parte inferior</string>
     <plurals name="settings_folder_summary">
         <item quantity="one">%1$d artigo · %2$s</item>
@@ -356,7 +356,7 @@
     <string name="icon_designer_example">Exemplo</string>
     <string name="icon_designer_save">Gardar</string>
     <string name="icon_designer_saved">Gardado</string>
-    <string name="icon_designer_switch_app">Trocar de aplicación</string>
+    <string name="icon_designer_switch_app">Cambiar de aplicación</string>
     <string name="icon_designer_source">Paquete de iconas ou imaxe</string>
     <string name="icon_designer_suggestions">Suxestións</string>
     <string name="icon_suggestion_list">Formatar lista con viñetas</string>
@@ -402,7 +402,7 @@
     <string name="weather_settings_enabled_summary">Pantalla de inicio e axenda · Breezy Weather</string>
     <string name="weather_settings_disabled_summary">Opcional · require Breezy Weather</string>
     <string name="weather_settings_enable">Amosar o tempo</string>
-    <string name="weather_settings_enable_summary">Mostra o tempo xunto á data e na túa axenda.</string>
+    <string name="weather_settings_enable_summary">Amosa o tempo xunto á data e na túa axenda.</string>
     <string name="weather_settings_about">A función meteorolóxica integrada utiliza as localizacións e predicións gardadas en Breezy Weather. Concede permiso para compartir eses datos con Grace Launcher.</string>
     <string name="weather_settings_connection">Breezy Weather</string>
     <string name="weather_settings_disabled">Activa a función do tempo para conectar con Breezy Weather.</string>
@@ -429,7 +429,7 @@
         <item quantity="other">%1$d días</item>
     </plurals>
     <plurals name="weather_settings_days_summary">
-        <item quantity="one">Mostrar ata %1$d día. As predicións dispoñibles dependen da localización e da fonte de Breezy Weather seleccionadas.</item>
+        <item quantity="one">Amosar ata %1$d día. As predicións dispoñibles dependen da localización e da fonte de Breezy Weather seleccionadas.</item>
         <item quantity="other">Amosar ata %1$d días. As predicións dispoñibles dependen da localización e da fonte de Breezy Weather seleccionadas.</item>
     </plurals>
     <string name="weather_current_description">%1$s, %2$s</string>
@@ -577,10 +577,10 @@
     <string name="list_names_favorites">Só favoritos</string>
     <string name="list_names_app_list">Só lista de aplicacións</string>
     <string name="list_left_alphabet">Usa o alfabeto na esquerda</string>
-    <string name="list_left_alphabet_summary">Desliza o dedo polo bordo esquerdo para controlar o alfabeto da dereita</string>
+    <string name="list_left_alphabet_summary">Esvara o dedo polo bordo esquerdo para controlar o alfabeto da dereita</string>
     <string name="shortcuts_folders_title">Atallos e cartafoles</string>
     <string name="shortcuts_folders_enable">Activar as ventás emerxentes da aplicación</string>
-    <string name="popup_swipe_left_first">Desliza cara á esquerda para abrir o primeiro elemento</string>
+    <string name="popup_swipe_left_first">Esvara cara á esquerda para abrir o primeiro elemento</string>
     <string name="popup_swipe_left_first_summary">Abre o primeiro atallo, aplicación ou widget na xanela emerxente</string>
     <string name="popup_silent_notifications">Notificacións silenciosas</string>
     <string name="popup_normal_notifications">Notificacións normais</string>
