@@ -603,4 +603,26 @@
     <string name="list_left_alphabet">Usa l\'alfabeto da sinistra</string>
     <string name="list_left_alphabet_summary">Scorri lungo il bordo sinistro per controllare l\'alfabeto a destra</string>
     <string name="icon_suggestion_power">Accensione e spegnimento</string>
+    <string name="grace_button_position_size">Posizione e dimensione</string>
+    <string name="grace_button_alignment">Allineamento</string>
+    <string name="grace_button_show_both">Entrambi</string>
+    <string name="grace_button_align_left">Sinistra</string>
+    <string name="grace_button_align_center">Centro</string>
+    <string name="grace_button_align_right">Destra</string>
+    <string name="grace_button_side_distance">Distanza dal lato</string>
+    <string name="grace_button_bottom_distance">Distanza dal basso</string>
+    <string name="grace_button_size">Dimensione pulsante</string>
+    <string name="grace_button_position_hint">Trascina il pulsante per modificare la sua posizione</string>
+    <string name="icon_display_section">Visualizzazione icona</string>
+    <string name="icon_display_full">Icone complete</string>
+    <string name="icon_display_dot">Punti</string>
+    <string name="icon_display_hidden">Solo nomi</string>
+    <string name="icon_display_shared">impostazione condivisa</string>
+    <string name="icon_display_shared_caption">Impostazione condivisa in uso</string>
+    <string name="icon_dot_color">Colore punto</string>
+    <string name="icon_dot_color_artwork">Dall\'icona dell\'app</string>
+    <string name="icon_dot_color_theme">Colore del tema</string>
+    <string name="icon_dot_color_custom">Personalizzato</string>
+    <string name="icon_dot_size">Dimensione punto</string>
+    <string name="grace_button_show_on">Mostra su</string>
 </resources>
