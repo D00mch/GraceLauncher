@@ -28,6 +28,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.core.content.ContextCompat
+import com.galaxyrio.gracelauncher.data.IconDisplaySettings
+import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.WallpaperTextMode
 import com.galaxyrio.gracelauncher.data.IconColor
 import com.materialkolor.PaletteStyle
@@ -35,7 +37,8 @@ import com.materialkolor.ktx.toDynamicScheme
 import com.materialkolor.ktx.toneColor
 import java.util.function.Consumer
 
-data class LauncherAppearance(val darkText: Boolean = false, val themedIcons: Boolean = false, val iconSize: Int = 100) {
+data class LauncherAppearance(val darkText: Boolean = false, val themedIcons: Boolean = false, val iconSize: Int = 100,
+    val iconDisplay: IconDisplaySettings = IconDisplaySettings()) {
     val text: Color get() = if (darkText) Color(0xFF202025) else Color(0xFFFAF9FE)
     val textShadow: Shadow get() = if (darkText) Shadow.None else Shadow(Color.Black.copy(alpha = 0.32f), blurRadius = 4f)
 }
@@ -50,8 +53,13 @@ internal fun LauncherAppearance.wallpaperTint(primary: Color, choice: IconColor?
     return choice?.resolve(automatic.toArgb(), primary.toArgb())?.let(::Color) ?: automatic
 }
 
+/** One resolver for every row: a per-app override wins, else the shared setting. */
+fun LauncherApp.effectiveDisplay(appearance: LauncherAppearance): IconDisplaySettings =
+    iconDisplay ?: appearance.iconDisplay
+
 @Composable
-fun rememberLauncherAppearance(mode: WallpaperTextMode, themedIcons: Boolean, iconSize: Int = 100): LauncherAppearance {
+fun rememberLauncherAppearance(mode: WallpaperTextMode, themedIcons: Boolean, iconSize: Int = 100,
+    iconDisplay: IconDisplaySettings = IconDisplaySettings()): LauncherAppearance {
     val context = LocalContext.current
     val manager = remember(context) { WallpaperManager.getInstance(context) }
     fun prefersDark(colors: WallpaperColors?): Boolean = Build.VERSION.SDK_INT >= 31 &&
@@ -74,6 +82,7 @@ fun rememberLauncherAppearance(mode: WallpaperTextMode, themedIcons: Boolean, ic
         },
         themedIcons = themedIcons,
         iconSize = iconSize.coerceIn(80, 150),
+        iconDisplay = iconDisplay,
     )
 }
 

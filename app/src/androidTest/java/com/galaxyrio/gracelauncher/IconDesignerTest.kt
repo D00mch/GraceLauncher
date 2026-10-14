@@ -10,6 +10,9 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.unit.dp
 import com.galaxyrio.gracelauncher.data.IconShape
 import com.galaxyrio.gracelauncher.data.IconColor
+import com.galaxyrio.gracelauncher.data.IconDisplaySettings
+import com.galaxyrio.gracelauncher.data.IconDisplayStyle
+import com.galaxyrio.gracelauncher.data.IconDotColor
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.galaxyrio.gracelauncher.data.ItemIcon
@@ -183,6 +186,34 @@ class IconDesignerTest {
             assertEquals(IconColor.Theme, specialSaved?.design?.foreground)
             assertEquals(0f, specialSaved?.design?.x)
         }
+    }
+
+    @Test fun singleShowsInheritedDisplayAndRestoresSavedOverride() {
+        // Global dots; the app has no override yet, so the page mirrors the shared style.
+        state = state.copy(settings = state.settings.copy(
+            iconDesign = ItemIcon.Theme.copy(display = IconDisplaySettings(style = IconDisplayStyle.Dot))))
+        show(); chooseApp()
+        compose.onNodeWithTag("icon_designer_controls")
+            .performScrollToNode(hasTestTag("icon_designer_display"))
+        compose.onNodeWithTag("icon_designer_display:Dot", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("icon_designer_display_reset", useUnmergedTree = true).assertDoesNotExist()
+        // Switch to an app that carries a saved per-app override.
+        state = state.copy(itemIcons = mapOf(apps[1].key to ItemIcon("theme",
+            display = IconDisplaySettings(style = IconDisplayStyle.Dot,
+                dotColor = IconDotColor.Custom, dotSize = 14, customColor = IconColor(0xFF336699.toInt())))))
+        compose.onNodeWithTag("icon_designer_controls")
+            .performScrollToNode(hasTestTag("icon_designer_switch"))
+        compose.onNodeWithTag("icon_designer_switch").performClick()
+        compose.onNodeWithTag("icon_designer_app_query").performTextReplacement("App 1")
+        compose.onNodeWithTag("icon_designer_app:${apps[1].key}").performClick()
+        compose.onNodeWithTag("icon_designer_controls")
+            .performScrollToNode(hasTestTag("icon_designer_display"))
+        compose.onNodeWithTag("icon_designer_display:Dot", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("icon_designer_dot_color:Custom", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("icon_designer_display_reset", useUnmergedTree = true).assertIsEnabled()
+        // Resetting clears the override back to the shared dots, without writing.
+        compose.onNodeWithTag("icon_designer_display_reset", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("icon_designer_dot_color:Artwork", useUnmergedTree = true).assertIsSelected()
     }
 
 }

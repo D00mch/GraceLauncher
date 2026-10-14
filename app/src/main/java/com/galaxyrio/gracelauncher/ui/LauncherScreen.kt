@@ -551,7 +551,8 @@ internal fun LauncherScreen(
         AppListModel(appListApps, uiState.folders, privateFolder, privateExpanded, privateApps, recentFolder, workFolder, workExpanded, workApps)
     }
     val drawerState = rememberLazyListState()
-    val appearance = rememberLauncherAppearance(uiState.textMode, uiState.themedIcons, uiState.settings.iconDesign?.design?.iconSize ?: 100)
+    val appearance = rememberLauncherAppearance(uiState.textMode, uiState.themedIcons,
+        uiState.settings.iconDesign?.design?.iconSize ?: 100, uiState.settings.iconDisplay)
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {

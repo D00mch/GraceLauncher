@@ -55,6 +55,10 @@ data class LauncherSettings(
     val enabledIconPackPackages: List<String>
         get() = normalizeIconPackOrder(iconPackPackages.ifEmpty { listOfNotNull(iconPackPackage) })
 
+    /** Shared icon display lives inside the bulk design, same shape as per-app overrides. */
+    val iconDisplay: IconDisplaySettings
+        get() = iconDesign?.display ?: IconDisplaySettings()
+
     fun withIconPacks(packages: List<String>): LauncherSettings = copy(
         iconPackPackage = null,
         iconPackPackages = normalizeIconPackOrder(packages),

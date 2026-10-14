@@ -20,7 +20,12 @@ class IconDesignerPersistenceTest {
     private fun open(): LauncherDatabase {
         database?.close()
         return Room.databaseBuilder(context, LauncherDatabase::class.java, databaseName)
-            .addMigrations(LauncherDatabase.Migration10To11, LauncherDatabase.Migration11To12).build().also { database = it }
+            .addMigrations(LauncherDatabase.Migration10To11, LauncherDatabase.Migration11To12,
+                LauncherDatabase.Migration12To13, LauncherDatabase.Migration13To14,
+                LauncherDatabase.Migration14To15, LauncherDatabase.Migration15To16,
+                LauncherDatabase.Migration16To17, LauncherDatabase.Migration17To18,
+                LauncherDatabase.Migration18To19, LauncherDatabase.Migration19To20,
+                LauncherDatabase.Migration20To21).build().also { database = it }
     }
 
     @After fun close() { database?.close(); context.deleteDatabase(databaseName) }

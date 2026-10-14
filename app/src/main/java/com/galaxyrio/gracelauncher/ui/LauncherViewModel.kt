@@ -715,7 +715,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         var imported: ItemIcon? = null
         return try {
             imported = itemIcons.importImage(uri)
-            setItemIcon(app, imported).also { if (!it) itemIcons.deleteImage(imported) }
+            // The imported image is a fresh ItemIcon, keep the display override.
+            setItemIcon(app, imported.copy(display = itemsSnapshot.icons[app.key]?.display))
+                .also { if (!it) itemIcons.deleteImage(imported) }
         } catch (error: Exception) {
             itemIcons.deleteImage(imported)
             if (error is CancellationException) throw error
@@ -825,7 +827,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     suspend fun applyIconDesign(choice: ItemIcon): Boolean = settingsWriteMutex.withLock {
         try {
             var previous: ItemIcon? = null
-            settingsRepository.mutateSettings { previous = it.iconDesign; it.copy(iconDesign = choice) }
+            // The bulk design carries the shared icon-display settings inside its
+            // JSON, the same field per-app overrides use.
+            settingsRepository.mutateSettings {
+                previous = it.iconDesign
+                it.copy(iconDesign = choice)
+            }
             if (previous?.kind == "image" && (choice.kind != "image" || previous?.source != choice.source) &&
                 !itemsRepository.isImageReferenced(previous!!.source)) itemIcons.deleteImage(previous)
             _uiState.update { it.copy(settingsSaveFailed = false) }

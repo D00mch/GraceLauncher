@@ -23,6 +23,8 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.IconDesign
+import com.galaxyrio.gracelauncher.data.IconDisplayStyle
+import com.galaxyrio.gracelauncher.data.IconDotColor
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
 import com.galaxyrio.gracelauncher.data.LauncherSettings
@@ -41,6 +43,9 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
     private val directory get() = File(context.filesDir, "item_icons")
     private val images = LruCache<String, Bitmap>(12)
     private val themePalettes = LruCache<Pair<Int, Boolean>, Pair<Int, Int>>(8)
+    // app.key → (artwork inputs hash, sampled color or 0 for neutral). Refresh
+    // re-renders every icon, so sampling only reruns when the inputs changed.
+    private val dominantColors = LruCache<String, Pair<Int, Int>>(256)
 
     private fun imageBitmap(name: String, size: Int): Bitmap? = runCatching {
         val key = "$name:$size"
@@ -131,14 +136,14 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
     }
 
     suspend fun apply(app: LauncherApp, choice: ItemIcon?, settings: LauncherSettings = LauncherSettings()): LauncherApp = withContext(Dispatchers.IO) {
-        safelyRender(app, app) {
-            if (choice == null) return@withContext app
+        val rendered = safelyRender(app, app) {
+            if (choice == null) return@safelyRender app
             choice.design?.let { design ->
-                val original = layers(app, choice, settings, if (app.isGraceButton) 256 else 144) ?: return@withContext app
+                val original = layers(app, choice, settings, if (app.isGraceButton) 256 else 144) ?: return@safelyRender app
                 val colors = dynamicColors(settings)
                 val theme = themeColors(settings)
-                return@withContext app.copy(icon = renderDesignedIcon(original, design, colors.first, colors.second, theme.first, theme.second).asImageBitmap(),
-                    monochromeIcon = null, iconPackPackage = when (choice.kind) {
+                return@safelyRender app.copy(icon = renderDesignedIcon(original, design, colors.first, colors.second, theme.first, theme.second).asImageBitmap(),
+                    monochromeIcon = null, iconColor = null, iconPackPackage = when (choice.kind) {
                         "theme" -> app.themeIconPackPackage
                         "pack" -> choice.source
                         else -> null
@@ -148,15 +153,34 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
                 "pack" -> packs.selectedIcon(choice)
                 "image" -> imageBitmap(choice.source, 144)?.let { PackIcon(it.asImageBitmap()) }
                 "system" -> if (app.folderId != null) null else if (app.shortcut != null) app.shortcut.icon?.let { PackIcon(it) } else runCatching {
-                    val drawable = systemDrawable(app) ?: return@withContext app
+                    val drawable = systemDrawable(app) ?: return@safelyRender app
                     val mono = if (Build.VERSION.SDK_INT >= 33) (drawable as? AdaptiveIconDrawable)?.monochrome else null
                     PackIcon(renderIcon(drawable).asImageBitmap(), mono?.let { renderIcon(it).asImageBitmap() })
                 }.getOrNull()
                 else -> null
             }
             if (icon == null) app else app.copy(icon = icon.bitmap, monochromeIcon = icon.monochrome,
-                monochromeScale = icon.monochromeScale, iconPackPackage = choice.source.takeIf { choice.kind == "pack" })
-        }
+                iconColor = null, monochromeScale = icon.monochromeScale, iconPackPackage = choice.source.takeIf { choice.kind == "pack" })
+        }.copy(iconDisplay = choice?.display)
+        // Dot mode precomputes its color here so theme/dynamic customs resolve exactly
+        // like the designer preview instead of an approximation at render time.
+        val display = choice?.display ?: settings.iconDisplay
+        if (display.style == IconDisplayStyle.Dot && rendered.iconColor == null) {
+            val color = when (display.dotColor) {
+                IconDotColor.Artwork -> rendered.icon?.asAndroidBitmap()?.let { bitmap ->
+                    // Keyed on everything that shapes the artwork; a miss resamples.
+                    // An in-place pack update keeps a stale color until another input
+                    // changes — cosmetic only, self-heals on the next refresh cause.
+                    val inputs = listOf(choice?.encode(), settings.enabledIconPackPackages,
+                        settings.useDynamicColors, settings.themeColor, settings.darkMode).hashCode()
+                    dominantColors[app.key]?.takeIf { it.first == inputs }?.second?.takeIf { it != 0 }
+                        ?: (IconDominantColor.of(bitmap) ?: 0).also { dominantColors.put(app.key, inputs to it) }
+                }
+                IconDotColor.Custom -> display.customColor?.resolve(dynamicColors(settings).first, themeColors(settings).first)
+                IconDotColor.Theme -> null
+            }
+            if (color != null) rendered.copy(iconColor = color) else rendered
+        } else rendered
     }
 
     /** One invalid third-party drawable must not abort the launcher or the live preview. */

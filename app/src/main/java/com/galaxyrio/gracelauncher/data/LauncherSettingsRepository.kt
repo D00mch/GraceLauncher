@@ -38,6 +38,8 @@ class LauncherSettingsRepository(private val database: LauncherDatabase) {
     }.distinctUntilChanged()
 
     suspend fun updateSettings(settings: LauncherSettings) {
+        // The raw hideFavoriteNames flag is stored untouched; hidden-icon safety is
+        // derived on read so the user's preference survives a Hidden round-trip.
         dao.saveSettings(LauncherSettingsEntity(
             clockEnabled = settings.clockEnabled,
             calendarAboveClock = settings.calendarAboveClock,
