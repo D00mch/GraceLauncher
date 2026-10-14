@@ -604,4 +604,15 @@
     <string name="grace_button_bottom_distance">Distancia desde a parte inferior</string>
     <string name="grace_button_size">Tamaño do botón</string>
     <string name="grace_button_position_hint">Arrastra o botón para cambiar a súa posición</string>
+    <string name="icon_display_section">Visualización de iconas</string>
+    <string name="icon_display_full">Iconas completas</string>
+    <string name="icon_display_dot">Puntos</string>
+    <string name="icon_display_hidden">Só nomes</string>
+    <string name="icon_display_shared">Configuración compartida</string>
+    <string name="icon_display_shared_caption">Empregando a configuración compartida</string>
+    <string name="icon_dot_color">Cor do punto</string>
+    <string name="icon_dot_color_artwork">Dende a icona da aplicación</string>
+    <string name="icon_dot_color_theme">Cor do tema</string>
+    <string name="icon_dot_color_custom">Personalizado</string>
+    <string name="icon_dot_size">Tamaño do punto</string>
 </resources>
