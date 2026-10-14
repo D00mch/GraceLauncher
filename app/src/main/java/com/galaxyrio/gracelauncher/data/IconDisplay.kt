@@ -19,6 +19,7 @@ data class IconDisplaySettings(
     val dotCookieSides: Int = 4,
     val dotPebbleRoundness: Int = IconDesign.DefaultPebbleRoundness,
     val dotSquareCornerRadius: Int = 0,
+    val dotSquareAspectRatio: Float = 1f,
 ) {
     val color: IconColor get() = when (dotColor) {
         IconDotColor.Artwork -> customColor?.takeIf { it.source == IconColorSource.FromApp } ?: IconColor.FromApp
@@ -33,11 +34,11 @@ data class IconDisplaySettings(
     }
 
     val dotDesign: IconDesign get() = IconDesign(shape = dotShape, cookieSides = dotCookieSides,
-        pebbleRoundness = dotPebbleRoundness, squareCornerRadius = dotSquareCornerRadius)
+        pebbleRoundness = dotPebbleRoundness, squareCornerRadius = dotSquareCornerRadius, squareAspectRatio = dotSquareAspectRatio)
 
     fun withDotDesign(design: IconDesign): IconDisplaySettings = copy(dotShape = design.shape,
         dotCookieSides = design.cookieSides, dotPebbleRoundness = design.pebbleRoundness,
-        dotSquareCornerRadius = design.squareCornerRadius).normalized()
+        dotSquareCornerRadius = design.squareCornerRadius, dotSquareAspectRatio = design.squareAspectRatio).normalized()
 
     fun normalized(): IconDisplaySettings = copy(
         dotSize = dotSize.coerceIn(4, 32),
@@ -45,6 +46,7 @@ data class IconDisplaySettings(
         dotCookieSides = dotCookieSides.takeIf { it in IconDesign.CookieSides } ?: 4,
         dotPebbleRoundness = dotPebbleRoundness.coerceIn(0, 100),
         dotSquareCornerRadius = dotSquareCornerRadius.coerceIn(0, 100),
+        dotSquareAspectRatio = normalizeSquareAspectRatio(dotSquareAspectRatio),
     )
 
     internal fun json(): JSONObject = normalized().let { value -> JSONObject()
@@ -55,6 +57,7 @@ data class IconDisplaySettings(
         .put("dotCookieSides", value.dotCookieSides)
         .put("dotPebbleRoundness", value.dotPebbleRoundness)
         .put("dotSquareCornerRadius", value.dotSquareCornerRadius)
+        .put("dotSquareAspectRatio", value.dotSquareAspectRatio)
         .apply { value.customColor?.let { put("customColor", it.json()) } }
     }
 
@@ -73,6 +76,7 @@ data class IconDisplaySettings(
                     dotCookieSides = it.optInt("dotCookieSides", 4),
                     dotPebbleRoundness = it.optInt("dotPebbleRoundness", IconDesign.DefaultPebbleRoundness),
                     dotSquareCornerRadius = it.optInt("dotSquareCornerRadius", 0),
+                    dotSquareAspectRatio = it.optDouble("dotSquareAspectRatio", 1.0).toFloat(),
                 ).normalized()
             }
         }.getOrDefault(IconDisplaySettings())

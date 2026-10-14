@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -37,6 +38,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.galaxyrio.gracelauncher.R
@@ -47,9 +49,14 @@ import com.galaxyrio.gracelauncher.data.IconDisplayStyle
 import com.galaxyrio.gracelauncher.data.IconColorSource
 import androidx.compose.ui.graphics.toArgb
 import com.galaxyrio.gracelauncher.data.IconShape
+import com.galaxyrio.gracelauncher.data.normalizeSquareAspectRatio
+import com.galaxyrio.gracelauncher.data.squareAspectRatioFromSlider
+import com.galaxyrio.gracelauncher.data.squareAspectRatioToSlider
 import com.galaxyrio.gracelauncher.data.icons.iconShapePath
 import com.galaxyrio.gracelauncher.data.icons.GraceButtonIcon
 import kotlin.math.roundToInt
+import kotlin.math.abs
+import java.text.NumberFormat
 
 internal fun LazyListScope.iconDesignerControls(
     all: Boolean, enabled: Boolean, appLabel: String?, sourceLabel: String, design: IconDesign,
@@ -281,7 +288,7 @@ internal fun DesignerShapeChoices(design: IconDesign, enabled: Boolean, tag: Str
                 Surface(shape = CircleShape, color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent) {
                     Canvas(Modifier.size(48.dp).padding(6.dp)) {
                         val path = iconShapePath(shape, design.cookieSides, size.minDimension,
-                            design.pebbleRoundness, design.squareCornerRadius).asComposePath()
+                            design.pebbleRoundness, design.squareCornerRadius, design.squareAspectRatio).asComposePath()
                         if (shape == IconShape.None) drawPath(path, color,
                             style = Stroke(2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))))
                         else drawPath(path, color)
@@ -295,7 +302,7 @@ internal fun DesignerShapeChoices(design: IconDesign, enabled: Boolean, tag: Str
 
 @Composable
 internal fun DesignerShapeAdjustment(design: IconDesign, defaults: IconDesign, enabled: Boolean, tag: String,
-    onFinished: ((IconDesign) -> Unit)? = null, onChange: (IconDesign) -> Unit) {
+    onFinished: ((IconDesign) -> Unit)? = null, includeAspectRatio: Boolean = true, onChange: (IconDesign) -> Unit) {
     val pebble = design.shape == IconShape.Pebble
     if (pebble || design.shape == IconShape.Square) {
         DesignerSlider(stringResource(if (pebble) R.string.icon_designer_pebble_roundness else R.string.icon_designer_square_corner_radius),
@@ -306,6 +313,22 @@ internal fun DesignerShapeAdjustment(design: IconDesign, defaults: IconDesign, e
                 else design.copy(squareCornerRadius = value.roundToInt())) }) { value ->
             onChange(if (pebble) design.copy(pebbleRoundness = value.roundToInt())
                 else design.copy(squareCornerRadius = value.roundToInt()))
+        }
+        if (!pebble && includeAspectRatio) {
+            val ratio = normalizeSquareAspectRatio(design.squareAspectRatio)
+            val defaultRatio = normalizeSquareAspectRatio(defaults.squareAspectRatio)
+            val locale = LocalConfiguration.current.locales[0]
+            val number = remember(locale) { NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 2 } }
+            val ratioText = if (ratio >= 1f) "${number.format(ratio)} : 1" else "1 : ${number.format(1f / ratio)}"
+            DesignerSlider(stringResource(R.string.icon_designer_square_aspect_ratio), squareAspectRatioToSlider(ratio),
+                squareAspectRatioToSlider(defaultRatio), -100f..100f, enabled, "${tag}_square_aspect_ratio",
+                centered = true, valueText = ratioText, resetEnabled = abs(ratio - defaultRatio) > .00001f,
+                onReset = {
+                    val reset = design.copy(squareAspectRatio = defaultRatio)
+                    onChange(reset); onFinished?.invoke(reset)
+                }, onFinished = { value -> onFinished?.invoke(design.copy(squareAspectRatio = squareAspectRatioFromSlider(value))) }) { value ->
+                onChange(design.copy(squareAspectRatio = squareAspectRatioFromSlider(value)))
+            }
         }
     } else if (design.shape == IconShape.Cookie) {
         Text(stringResource(R.string.icon_designer_cookie_sides, design.cookieSides))
@@ -333,7 +356,8 @@ internal fun DesignerSegment(index: Int, count: Int, tag: String, content: @Comp
 @Composable
 internal fun DesignerSlider(label: String, value: Float, default: Float, range: ClosedFloatingPointRange<Float>,
     enabled: Boolean, tag: String, suffix: String = "%", onFinished: ((Float) -> Unit)? = null,
-    resetEnabled: Boolean = value != default, onReset: (() -> Unit)? = null, centered: Boolean = false, onChange: (Float) -> Unit) {
+    resetEnabled: Boolean = value != default, onReset: (() -> Unit)? = null, centered: Boolean = false,
+    valueText: String? = null, onChange: (Float) -> Unit) {
     // A final input event can precede recomposition. Commit that exact value,
     // not the previous frame's captured parameter.
     var latest by remember { mutableFloatStateOf(value) }
@@ -341,12 +365,15 @@ internal fun DesignerSlider(label: String, value: Float, default: Float, range: 
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             val sign = if (centered && value > 0f) "+" else ""
-            Text("$label · $sign${value.roundToInt()}$suffix", style = MaterialTheme.typography.labelLarge)
+            Text("$label · ${valueText ?: "$sign${value.roundToInt()}$suffix"}", style = MaterialTheme.typography.labelLarge)
             Slider(value, { latest = it.roundToInt().toFloat(); onChange(latest) }, valueRange = range, enabled = enabled,
                 onValueChangeFinished = { onFinished?.invoke(latest) },
                 track = { state -> if (centered) SliderDefaults.CenteredTrack(state, enabled = enabled)
                     else SliderDefaults.Track(state, enabled = enabled) },
-                modifier = Modifier.testTag(tag).semantics { contentDescription = label })
+                modifier = Modifier.testTag(tag).semantics {
+                    contentDescription = label
+                    if (valueText != null) stateDescription = valueText
+                })
         }
         ResetIconButton(label, enabled && resetEnabled, "${tag}_reset") {
             if (onReset != null) onReset() else { onChange(default); onFinished?.invoke(default) }

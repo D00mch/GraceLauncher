@@ -396,6 +396,7 @@
     <string name="icon_designer_shape_cookie">n-side cookie</string>
     <string name="icon_designer_pebble_roundness">圆滑度</string>
     <string name="icon_designer_square_corner_radius">圆角大小</string>
+    <string name="icon_designer_square_aspect_ratio">长宽比</string>
     <string name="icon_designer_cookie_sides">Cookie · %1$d 边</string>
     <string name="icon_designer_color">颜色</string>
     <string name="icon_designer_invert_background">反转图标背景识别</string>

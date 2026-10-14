@@ -184,10 +184,10 @@ internal fun GraceButton(settings: GraceButtonSettings, editing: Boolean, enable
 @Composable
 internal fun GraceButtonArtwork(artwork: ImageBitmap?, design: IconDesign, size: Dp,
     editing: Boolean = false, modifier: Modifier = Modifier) {
-    val shape = remember(design.shape, design.cookieSides, design.pebbleRoundness, design.squareCornerRadius) {
+    val shape = remember(design.shape, design.cookieSides, design.pebbleRoundness, design.squareCornerRadius, design.squareAspectRatio) {
         if (design.shape == IconShape.None) RectangleShape else GenericShape { bounds, _ ->
             addPath(iconShapePath(design.shape, design.cookieSides, bounds.minDimension,
-                design.pebbleRoundness, design.squareCornerRadius).asComposePath())
+                design.pebbleRoundness, design.squareCornerRadius, design.squareAspectRatio).asComposePath())
         }
     }
     Surface(modifier.size(size), shape = if (editing) CircleShape else shape,

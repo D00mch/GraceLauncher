@@ -134,7 +134,7 @@ internal fun AlphabetSettings(uiState: LauncherUiState, actions: LauncherActions
                                 val update: (IconDesign) -> Unit = { value -> change { it.copy(indicatorShape = value.shape,
                                     cookieSides = value.cookieSides, pebbleRoundness = value.pebbleRoundness, squareCornerRadius = value.squareCornerRadius) } }
                                 DesignerShapeChoices(design, enabled, "alphabet", update)
-                                DesignerShapeAdjustment(design, IconDesign(), enabled, "alphabet", onFinished = update) { value ->
+                                DesignerShapeAdjustment(design, IconDesign(), enabled, "alphabet", onFinished = update, includeAspectRatio = false) { value ->
                                     draft = draft.copy(indicatorShape = value.shape, cookieSides = value.cookieSides,
                                         pebbleRoundness = value.pebbleRoundness, squareCornerRadius = value.squareCornerRadius)
                                 }

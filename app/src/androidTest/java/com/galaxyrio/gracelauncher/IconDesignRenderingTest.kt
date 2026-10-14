@@ -141,6 +141,24 @@ class IconDesignRenderingTest {
         assertEquals(5, masks.distinct().size)
     }
 
+    @Test fun squareAspectRatioClipsToCenteredRectanglesWithoutStretchingTheSymbol() {
+        val source = layers()
+        val horizontal = render(source, IconDesign(shape = IconShape.Square, squareAspectRatio = 2f))
+        val vertical = render(source, IconDesign(shape = IconShape.Square, squareAspectRatio = .5f))
+        assertEquals(0, Color.alpha(horizontal.getPixel(50, 10)))
+        assertEquals(Color.BLUE, horizontal.getPixel(10, 50))
+        assertEquals(0, Color.alpha(vertical.getPixel(10, 50)))
+        assertEquals(Color.BLUE, vertical.getPixel(50, 10))
+        listOf(horizontal, vertical).forEach { icon ->
+            assertEquals(Color.RED, icon.getPixel(40, 50))
+            assertEquals(Color.RED, icon.getPixel(59, 50))
+            assertEquals(Color.BLUE, icon.getPixel(60, 50))
+        }
+        val rounded = render(source, IconDesign(shape = IconShape.Square, squareAspectRatio = 2f, squareCornerRadius = 100))
+        assertEquals(0, Color.alpha(rounded.getPixel(1, 26)))
+        assertEquals(Color.BLUE, rounded.getPixel(1, 50))
+    }
+
     @Test fun roundnessControlsChangeTheMaskWithoutChangingTheIconCenter() {
         val source = layers()
         fun area(style: IconDesign): Int {
@@ -160,6 +178,8 @@ class IconDesignRenderingTest {
         val old = ItemIcon.decode("""{"kind":"theme","design":{"shape":"Pebble","themeIcons":true}}""")!!.design!!
         assertEquals(IconDesign.DefaultPebbleRoundness, old.pebbleRoundness)
         assertEquals(0, old.squareCornerRadius)
+        assertEquals(1f, old.squareAspectRatio, 0f)
+        assertEquals(1f, IconDisplaySettings.decode("""{"dotShape":"Square"}""").dotSquareAspectRatio, 0f)
         assertTrue(old.themeIcons)
     }
 
@@ -188,9 +208,10 @@ class IconDesignRenderingTest {
         val desktop = """{"kind":"pack","source":"example.icons","name":"alternate"}"""
         assertEquals(ItemIcon("pack", "example.icons", "alternate"), ItemIcon.decode(desktop))
         val design = ItemIcon("image", "example.png", design = IconDesign(shape = IconShape.Cookie, cookieSides = 9,
-            pebbleRoundness = 33, squareCornerRadius = 58,
+            pebbleRoundness = 33, squareCornerRadius = 58, squareAspectRatio = 1.75f,
             background = IconColor.Theme, foreground = IconColor(Color.BLUE), x = 12.5f, y = -10f, size = 175,
-            iconSize = 150, themeIcons = true, themeUnsupportedIcons = true, invertBackgroundDetection = true))
+            iconSize = 150, themeIcons = true, themeUnsupportedIcons = true, invertBackgroundDetection = true),
+            display = IconDisplaySettings(style = IconDisplayStyle.Dot, dotShape = IconShape.Square, dotSquareAspectRatio = .75f))
         assertEquals(design, ItemIcon.decode(design.encode()))
     }
 }

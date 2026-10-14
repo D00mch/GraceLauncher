@@ -120,11 +120,11 @@ fun AppIcon(app: LauncherApp, modifier: Modifier = Modifier, size: Dp = 38.dp, a
             style == IconDisplayStyle.Dot -> {
                 val dotSize = (display.dotSize * if (applyDisplaySize) appearance.iconSize / 100f else 1f).dp
                 val dotShape = remember(display.dotShape, display.dotCookieSides,
-                    display.dotPebbleRoundness, display.dotSquareCornerRadius) {
+                    display.dotPebbleRoundness, display.dotSquareCornerRadius, display.dotSquareAspectRatio) {
                     if (display.dotShape == IconShape.Circle || display.dotShape == IconShape.None) CircleShape
                     else GenericShape { bounds, _ ->
                         addPath(iconShapePath(display.dotShape, display.dotCookieSides, bounds.minDimension,
-                            display.dotPebbleRoundness, display.dotSquareCornerRadius).asComposePath())
+                            display.dotPebbleRoundness, display.dotSquareCornerRadius, display.dotSquareAspectRatio).asComposePath())
                     }
                 }
                 // Decorative only; rows keep their own label semantics.

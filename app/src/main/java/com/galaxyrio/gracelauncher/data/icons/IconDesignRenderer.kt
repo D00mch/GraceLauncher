@@ -20,6 +20,7 @@ import androidx.core.graphics.createBitmap
 import androidx.graphics.shapes.toPath
 import com.galaxyrio.gracelauncher.data.IconDesign
 import com.galaxyrio.gracelauncher.data.IconShape
+import com.galaxyrio.gracelauncher.data.squareIconDimensions
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.pow
@@ -112,7 +113,7 @@ internal fun drawDesignedIcon(canvas: Canvas, layers: IconLayers, design: IconDe
     }
     val mask = if (style.shape == IconShape.None) layers.originalMask ?: if (style.addTray)
         iconShapePath(IconShape.Circle, size = side.toFloat()) else null
-        else iconShapePath(style.shape, style.cookieSides, side.toFloat(), style.pebbleRoundness, style.squareCornerRadius)
+        else iconShapePath(style.shape, style.cookieSides, side.toFloat(), style.pebbleRoundness, style.squareCornerRadius, style.squareAspectRatio)
     mask?.let(canvas::clipPath)
     val canTheme = style.themeIcons && (layers.monochrome != null || style.themeUnsupportedIcons)
     val background = style.background?.resolve(themeBackground, appColors?.first)
@@ -184,7 +185,7 @@ internal fun pebbleShapePower(roundness: Int): Double = 2.0 / (6.0 - roundness.c
 
 /** One parameterized mask for rendered icons, picker swatches and the Grace button surface. */
 internal fun iconShapePath(shape: IconShape, sides: Int = 4, size: Float = 1f,
-    pebbleRoundness: Int = IconDesign.DefaultPebbleRoundness, squareCornerRadius: Int = 0): Path {
+    pebbleRoundness: Int = IconDesign.DefaultPebbleRoundness, squareCornerRadius: Int = 0, squareAspectRatio: Float = 1f): Path {
     val path = when (shape) {
         IconShape.Gem -> MaterialShapes.Gem.toPath()
         IconShape.Cookie -> when (sides) {
@@ -204,8 +205,11 @@ internal fun iconShapePath(shape: IconShape, sides: Int = 4, size: Float = 1f,
             close()
         }
         IconShape.Square -> Path().apply {
-            val radius = squareCornerRadius.coerceIn(0, 100) / 200f
-            addRoundRect(0f, 0f, 1f, 1f, radius, radius, Path.Direction.CW)
+            val (width, height) = squareIconDimensions(squareAspectRatio)
+            val left = (1f - width) / 2f
+            val top = (1f - height) / 2f
+            val radius = minOf(width, height) * squareCornerRadius.coerceIn(0, 100) / 200f
+            addRoundRect(left, top, left + width, top + height, radius, radius, Path.Direction.CW)
         }
         IconShape.None, IconShape.Circle -> Path().apply { addCircle(.5f, .5f, .5f, Path.Direction.CW) }
     }

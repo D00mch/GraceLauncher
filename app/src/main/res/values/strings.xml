@@ -416,6 +416,7 @@
     <string name="icon_designer_shape_cookie">n-side cookie</string>
     <string name="icon_designer_pebble_roundness">Roundness</string>
     <string name="icon_designer_square_corner_radius">Corner radius</string>
+    <string name="icon_designer_square_aspect_ratio">Aspect ratio</string>
     <string name="icon_designer_cookie_sides">Cookie · %1$d sides</string>
     <string name="icon_designer_color">Color</string>
     <string name="icon_designer_invert_background">Invert icon background detection</string>

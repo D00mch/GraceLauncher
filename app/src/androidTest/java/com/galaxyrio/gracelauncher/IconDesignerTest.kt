@@ -130,6 +130,8 @@ class IconDesignerTest {
         compose.onNodeWithTag("icon_designer_dot_shape:Square").performClick()
         compose.onNodeWithTag("icon_designer_dot_square_corner_radius").performScrollTo()
             .performSemanticsAction(SemanticsActions.SetProgress) { it(35f) }
+        compose.onNodeWithTag("icon_designer_dot_square_aspect_ratio").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(-100f) }
         compose.onNodeWithTag("icon_designer_display").performScrollTo()
         compose.onNodeWithTag("icon_designer_display:Hidden", useUnmergedTree = true).performClick().assertIsSelected()
         compose.onNodeWithTag("icon_designer_dot_shape").assertDoesNotExist()
@@ -141,6 +143,7 @@ class IconDesignerTest {
             assertEquals(18, bulkSaved?.display?.dotSize)
             assertEquals(IconShape.Square, bulkSaved?.display?.dotShape)
             assertEquals(35, bulkSaved?.display?.dotSquareCornerRadius)
+            assertEquals(.5f, bulkSaved?.display?.dotSquareAspectRatio)
             assertEquals(IconShape.None, bulkSaved?.design?.shape)
         }
     }
@@ -189,6 +192,7 @@ class IconDesignerTest {
         compose.onNodeWithTag("icon_designer_shapes").performScrollToIndex(2)
         compose.onNodeWithTag("icon_designer_shape:Pebble").performClick()
         compose.onNodeWithTag("icon_designer_square_corner_radius").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_square_aspect_ratio").assertDoesNotExist()
         compose.onNodeWithTag("icon_designer_pebble_roundness").performScrollTo()
             .performSemanticsAction(SemanticsActions.SetProgress) { it(33f) }
         compose.onNodeWithTag("icon_designer_shape").performScrollTo()
@@ -197,11 +201,19 @@ class IconDesignerTest {
         compose.onNodeWithTag("icon_designer_pebble_roundness").assertDoesNotExist()
         compose.onNodeWithTag("icon_designer_square_corner_radius").performScrollTo()
             .performSemanticsAction(SemanticsActions.SetProgress) { it(58f) }
+        compose.onNodeWithTag("icon_designer_square_aspect_ratio").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(-100f) }
+        compose.onNodeWithTag("icon_designer_square_aspect_ratio_reset").performClick()
+        assertEquals(0f, compose.onNodeWithTag("icon_designer_square_aspect_ratio").fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo].current)
+        compose.onNodeWithTag("icon_designer_square_aspect_ratio")
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(100f) }
         compose.onNodeWithTag("icon_designer_save").performClick()
         compose.runOnIdle {
             assertEquals(IconShape.Square, bulkSaved?.design?.shape)
             assertEquals(33, bulkSaved?.design?.pebbleRoundness)
             assertEquals(58, bulkSaved?.design?.squareCornerRadius)
+            assertEquals(2f, bulkSaved?.design?.squareAspectRatio)
             assertEquals(false, bulkSaved?.design?.themeIcons)
         }
     }

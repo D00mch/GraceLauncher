@@ -58,8 +58,10 @@ data class IconDesign(
     val cookieSides: Int = 4,
     /** 0 is a boxier superellipse; 100 approaches a circle. */
     val pebbleRoundness: Int = DefaultPebbleRoundness,
-    /** Radius as a percentage of half the icon width; 0 keeps sharp corners. */
+    /** Radius as a percentage of half the rectangle's shorter side; 0 keeps sharp corners. */
     val squareCornerRadius: Int = 0,
+    /** Width / height, fitted inside the existing square icon slot without stretching the symbol. */
+    val squareAspectRatio: Float = 1f,
     val background: IconColor? = null,
     val foreground: IconColor? = null,
     val addTray: Boolean = false,
@@ -90,6 +92,7 @@ data class IconDesign(
         cookieSides = cookieSides.takeIf { it in CookieSides } ?: 4,
         pebbleRoundness = pebbleRoundness.coerceIn(0, 100),
         squareCornerRadius = squareCornerRadius.coerceIn(0, 100),
+        squareAspectRatio = normalizeSquareAspectRatio(squareAspectRatio),
         x = x.takeIf { it.isFinite() }?.coerceIn(-50f, 50f) ?: 0f,
         y = y.takeIf { it.isFinite() }?.coerceIn(-50f, 50f) ?: 0f,
         size = size.coerceIn(25, 200),
@@ -99,6 +102,7 @@ data class IconDesign(
     internal fun json(): JSONObject = normalized().let { value ->
         JSONObject().put("shape", value.shape.name).put("cookieSides", value.cookieSides)
             .put("pebbleRoundness", value.pebbleRoundness).put("squareCornerRadius", value.squareCornerRadius)
+            .put("squareAspectRatio", value.squareAspectRatio)
             .put("x", value.x).put("y", value.y).put("size", value.size).put("addTray", value.addTray)
             .put("rotation", value.rotation)
             .put("iconSize", value.iconSize).put("themeIcons", value.themeIcons)
@@ -121,6 +125,7 @@ data class IconDesign(
                 cookieSides = it.optInt("cookieSides", 4),
                 pebbleRoundness = it.optInt("pebbleRoundness", DefaultPebbleRoundness),
                 squareCornerRadius = it.optInt("squareCornerRadius", 0),
+                squareAspectRatio = it.optDouble("squareAspectRatio", 1.0).toFloat(),
                 background = IconColor.decode(if (it.optBoolean("addTray") && it.has("trayColor"))
                     it.optJSONObject("trayColor") else it.optJSONObject("background")),
                 foreground = IconColor.decode(it.optJSONObject("foreground")),
