@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.9
+
+- Updated the app icon. I hope you like the new design!
+- Grace Button can now be moved, with separate visibility settings for Favorites and App List.
+- Major Icon Designer update: show icons as dots or hide them, and recolor icons using their own colors.
+- Added more theme palette styles.
+- Made Hide Apps and Edit Favorites easier to use.
+
 ## 1.1.8
 
 - Urgent fix: Fixed a crash when scrolling to Hide Apps in Settings while using Spanish (and possibly other languages besides English and Chinese).
