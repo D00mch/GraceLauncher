@@ -15,6 +15,12 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -109,7 +115,7 @@ internal fun LazyListScope.iconDesignerControls(
                 val onShape: (IconDesign) -> Unit = { onDisplay(effective.withDotDesign(it)) }
                 DesignerShapeChoices(effective.dotDesign, enabled, "icon_designer_dot", onShape, includeNone = false)
                 DesignerShapeAdjustment(effective.dotDesign,
-                    (if (all) IconDisplaySettings() else inheritedDisplay).dotDesign, enabled, "icon_designer_dot", onShape)
+                    (if (all) IconDisplaySettings() else inheritedDisplay).dotDesign, enabled, "icon_designer_dot", onChange = onShape)
             }
         }
         item("dot_color") {
@@ -183,7 +189,7 @@ internal fun LazyListScope.iconDesignerControls(
         val tag = if (pebble) "icon_designer_pebble_roundness" else "icon_designer_square_corner_radius"
         item("shape_roundness") {
             DesignerSegment(roundnessIndex, count, "${tag}_control") {
-                DesignerShapeAdjustment(design, defaults, enabled, "icon_designer", onChange)
+                DesignerShapeAdjustment(design, defaults, enabled, "icon_designer", onChange = onChange)
             }
         }
     }
@@ -191,7 +197,7 @@ internal fun LazyListScope.iconDesignerControls(
         val cookieIndex = index++
         item("cookie") {
             DesignerSegment(cookieIndex, count, "icon_designer_cookie") {
-                DesignerShapeAdjustment(design, defaults, enabled, "icon_designer", onChange)
+                DesignerShapeAdjustment(design, defaults, enabled, "icon_designer", onChange = onChange)
             }
         }
     }
@@ -290,20 +296,28 @@ internal fun DesignerShapeChoices(design: IconDesign, enabled: Boolean, tag: Str
 }
 
 @Composable
-internal fun DesignerShapeAdjustment(design: IconDesign, defaults: IconDesign, enabled: Boolean, tag: String, onChange: (IconDesign) -> Unit) {
+internal fun DesignerShapeAdjustment(design: IconDesign, defaults: IconDesign, enabled: Boolean, tag: String,
+    onFinished: ((IconDesign) -> Unit)? = null, onChange: (IconDesign) -> Unit) {
     val pebble = design.shape == IconShape.Pebble
     if (pebble || design.shape == IconShape.Square) {
         DesignerSlider(stringResource(if (pebble) R.string.icon_designer_pebble_roundness else R.string.icon_designer_square_corner_radius),
             (if (pebble) design.pebbleRoundness else design.squareCornerRadius).toFloat(),
             (if (pebble) defaults.pebbleRoundness else defaults.squareCornerRadius).toFloat(),
-            0f..100f, enabled, if (pebble) "${tag}_pebble_roundness" else "${tag}_square_corner_radius") { value ->
+            0f..100f, enabled, if (pebble) "${tag}_pebble_roundness" else "${tag}_square_corner_radius",
+            onFinished = { value -> onFinished?.invoke(if (pebble) design.copy(pebbleRoundness = value.roundToInt())
+                else design.copy(squareCornerRadius = value.roundToInt())) }) { value ->
             onChange(if (pebble) design.copy(pebbleRoundness = value.roundToInt())
                 else design.copy(squareCornerRadius = value.roundToInt()))
         }
     } else if (design.shape == IconShape.Cookie) {
         Text(stringResource(R.string.icon_designer_cookie_sides, design.cookieSides))
+        var latest by remember { mutableStateOf(design) }
+        SideEffect { latest = design }
         Slider(value = IconDesign.CookieSides.indexOf(design.cookieSides).coerceAtLeast(0).toFloat(),
-            onValueChange = { onChange(design.copy(cookieSides = IconDesign.CookieSides[it.roundToInt().coerceIn(0, 4)])) },
+            onValueChange = {
+                latest = design.copy(cookieSides = IconDesign.CookieSides[it.roundToInt().coerceIn(0, 4)])
+                onChange(latest)
+            }, onValueChangeFinished = { onFinished?.invoke(latest) },
             valueRange = 0f..4f, steps = 3, enabled = enabled, modifier = Modifier.testTag("${tag}_cookie_slider"))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             IconDesign.CookieSides.forEach { Text(it.toString(), style = MaterialTheme.typography.labelSmall) }
@@ -322,11 +336,15 @@ internal fun DesignerSegment(index: Int, count: Int, tag: String, content: @Comp
 internal fun DesignerSlider(label: String, value: Float, default: Float, range: ClosedFloatingPointRange<Float>,
     enabled: Boolean, tag: String, suffix: String = "%", onFinished: ((Float) -> Unit)? = null,
     resetEnabled: Boolean = value != default, onReset: (() -> Unit)? = null, onChange: (Float) -> Unit) {
+    // A final input event can precede recomposition. Commit that exact value,
+    // not the previous frame's captured parameter.
+    var latest by remember { mutableFloatStateOf(value) }
+    SideEffect { latest = value }
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text("$label · ${value.roundToInt()}$suffix", style = MaterialTheme.typography.labelLarge)
-            Slider(value, { onChange(it.roundToInt().toFloat()) }, valueRange = range, enabled = enabled,
-                onValueChangeFinished = { onFinished?.invoke(value) },
+            Slider(value, { latest = it.roundToInt().toFloat(); onChange(latest) }, valueRange = range, enabled = enabled,
+                onValueChangeFinished = { onFinished?.invoke(latest) },
                 modifier = Modifier.testTag(tag).semantics { contentDescription = label })
         }
         ResetIconButton(label, enabled && resetEnabled, "${tag}_reset") {

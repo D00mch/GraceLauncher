@@ -98,7 +98,7 @@ private fun fallbackIconColor(key: String): Color =
     FallbackIconColors[(key.hashCode() and Int.MAX_VALUE) % FallbackIconColors.size]
 
 @Composable
-private fun IconBadge(app: LauncherApp, badgeSize: Dp, modifier: Modifier = Modifier) {
+internal fun IconBadge(app: LauncherApp, badgeSize: Dp, modifier: Modifier = Modifier) {
     Box(modifier.size(badgeSize).testTag("${if (app.isWorkProfile) "work" else "private"}_indicator:${app.key}")
         .background(MaterialTheme.colorScheme.surface, CircleShape)
         .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {

@@ -51,6 +51,7 @@ import com.galaxyrio.gracelauncher.data.icons.drawDesignedIcon
 import com.galaxyrio.gracelauncher.data.icons.renderDesignedIcon
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.AppIcon
+import com.galaxyrio.gracelauncher.ui.components.IconBadge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
@@ -145,12 +146,27 @@ internal fun DesignerPreviewIcon(app: LauncherApp, layers: IconLayers?, design: 
 internal fun DesignerDisplayedIcon(app: LauncherApp, layers: IconLayers?, design: IconDesign,
     dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp,
     display: IconDisplaySettings, modifier: Modifier = Modifier) {
+    if (display.style == IconDisplayStyle.Full && layers != null) {
+        // The small result rows used to launch another 384/768px bitmap render on
+        // every slider tick, even though the large preview already draws the layers.
+        Box(modifier.size(size)) {
+            DesignerPreviewIcon(app, layers, design, dynamicColors, size, themeColors = themeColors)
+            if ((app.isPrivateSpace && app.showPrivateIndicator) || (app.isWorkProfile && app.showWorkIndicator)) {
+                IconBadge(app, size * .42f, Modifier.align(Alignment.BottomEnd))
+            }
+        }
+        return
+    }
+    if (display.style == IconDisplayStyle.Hidden) {
+        AppIcon(app, modifier, size = size, applyDisplaySize = false, display = display)
+        return
+    }
     val bitmap by produceState<ImageBitmap?>(null, layers, design, dynamicColors, themeColors) {
         value = layers?.let { withContext(Dispatchers.Default) { renderDesignedIcon(it, design,
             dynamicColors.first, dynamicColors.second, themeColors.first, themeColors.second).asImageBitmap() } }
     }
     val artwork = bitmap ?: app.icon
-    val iconColor = remember(artwork, display, dynamicColors, themeColors) {
+    val iconColor = remember(artwork, display.style, display.dotColor, display.customColor, dynamicColors, themeColors) {
         if (display.style == IconDisplayStyle.Dot) when (display.dotColor) {
             IconDotColor.Artwork -> artwork?.asAndroidBitmap()?.let(IconDominantColor::of)
             IconDotColor.Custom -> display.customColor?.resolve(dynamicColors.first, themeColors.first)

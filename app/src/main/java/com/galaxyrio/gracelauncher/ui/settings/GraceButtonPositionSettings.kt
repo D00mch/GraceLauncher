@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.GraceButtonAlignment
 import com.galaxyrio.gracelauncher.data.GraceButtonLayout
@@ -39,6 +40,7 @@ import com.galaxyrio.gracelauncher.ui.LauncherActions
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.GraceButtonArtwork
 import com.galaxyrio.gracelauncher.ui.components.stableStatusBarInset
+import kotlin.math.roundToInt
 
 @Composable
 internal fun GraceButtonPositionSettings(uiState: LauncherUiState, actions: LauncherActions, onBack: () -> Unit) {
@@ -126,7 +128,7 @@ internal fun GraceButtonPositionSettings(uiState: LauncherUiState, actions: Laun
                 }
             }
             GraceButtonPositionPreview(uiState, draft, viewportLeft, viewportWidth, viewportHeight, topInset, bottomInset, enabled,
-                onChange = { draft = it }, onCommit = { commit() }, onCancel = { draft = saved },
+                onCommit = { commit(it) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     .padding(top = 12.dp, bottom = 12.dp + LocalSettingsBottomInset.current).height(previewHeight))
           }
@@ -159,11 +161,12 @@ private fun <T : Enum<T>> GraceButtonChoices(options: List<T>, selected: T, enab
 @Composable
 private fun GraceButtonPositionPreview(uiState: LauncherUiState, layout: GraceButtonLayout,
     viewportLeft: Float, viewportWidth: Float, viewportHeight: Float, topInset: Float, bottomInset: Float, enabled: Boolean,
-    onChange: (GraceButtonLayout) -> Unit, onCommit: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) {
+    onCommit: (GraceButtonLayout) -> Unit, modifier: Modifier = Modifier) {
     val latest by rememberUpdatedState(layout)
-    val change by rememberUpdatedState(onChange)
     val commit by rememberUpdatedState(onCommit)
-    val cancel by rememberUpdatedState(onCancel)
+    // Follow the finger in placement only. Controls and persistence update once
+    // on release, rather than rebuilding the page at pointer-event frequency.
+    var dragLayout by remember { mutableStateOf<GraceButtonLayout?>(null) }
     val density = LocalDensity.current
     val shape = ListItemDefaults.segmentedShapes(0, 1).shape
     val description = stringResource(R.string.grace_button_position_hint)
@@ -186,7 +189,7 @@ private fun GraceButtonPositionPreview(uiState: LauncherUiState, layout: GraceBu
                 if (!enabled) return@pointerInput
                 var dragging = false
                 var position = Offset.Zero
-                detectDragGestures(
+                try { detectDragGestures(
                     onDragStart = { point ->
                         val preview = origin ?: return@detectDragGestures
                         val current = latest.bounds(viewportWidth, viewportHeight, topInset, bottomInset)
@@ -195,26 +198,32 @@ private fun GraceButtonPositionPreview(uiState: LauncherUiState, layout: GraceBu
                         val hit = Rect(left, top, left + current.size * pixelsPerDp, top + current.size * pixelsPerDp)
                         dragging = hit.inflate(24.dp.toPx()).contains(point)
                         position = Offset(current.left, current.top)
+                        dragLayout = latest.takeIf { dragging }
                     },
-                    onDragEnd = { if (dragging) commit(); dragging = false },
-                    onDragCancel = { if (dragging) cancel(); dragging = false },
+                    onDragEnd = { if (dragging) dragLayout?.let(commit); dragging = false; dragLayout = null },
+                    onDragCancel = { dragging = false; dragLayout = null },
                 ) { event, amount ->
                     if (dragging) {
                         event.consume()
-                        val side = latest.bounds(viewportWidth, viewportHeight, topInset, bottomInset).size
+                        val current = dragLayout ?: latest
+                        val side = current.bounds(viewportWidth, viewportHeight, topInset, bottomInset).size
                         val moved = position + amount / pixelsPerDp
                         val lowestTop = (viewportHeight - bottomInset - side).coerceAtLeast(topInset)
-                        val highestTop = (lowestTop - latest.maxBottomMargin(viewportHeight, topInset, bottomInset)).coerceAtLeast(topInset)
+                        val highestTop = (lowestTop - current.maxBottomMargin(viewportHeight, topInset, bottomInset)).coerceAtLeast(topInset)
                         position = Offset(moved.x.coerceIn(0f, (viewportWidth - side).coerceAtLeast(0f)),
                             moved.y.coerceIn(highestTop, lowestTop))
-                        change(latest.movedTo(position.x, position.y, viewportWidth, viewportHeight, topInset, bottomInset))
+                        dragLayout = current.movedTo(position.x, position.y, viewportWidth, viewportHeight, topInset, bottomInset)
                     }
-                }
+                } } finally { dragLayout = null }
             }) {
         previewOrigin?.let { preview ->
             GraceButtonArtwork(artwork, design, bounds.size.dp,
                 modifier = Modifier.align(AbsoluteAlignment.TopLeft)
-                    .absoluteOffset(x = (viewportLeft + bounds.left - preview.x).dp, y = (bounds.top - preview.y).dp)
+                    .absoluteOffset {
+                        val current = (dragLayout ?: layout).bounds(viewportWidth, viewportHeight, topInset, bottomInset)
+                        IntOffset(((viewportLeft + current.left - preview.x) * pixelsPerDp).roundToInt(),
+                            ((current.top - preview.y) * pixelsPerDp).roundToInt())
+                    }
                     .wrapContentSize(AbsoluteAlignment.TopLeft, unbounded = true))
         }
     }

@@ -2,9 +2,6 @@ package com.galaxyrio.gracelauncher.ui.overlays
 
 import android.appwidget.AppWidgetManager
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -192,16 +189,15 @@ private fun ItemSelectionScreen(
             }
             items(reorder.keys.mapNotNull(selectedEntries::get), key = { FavoritesReorderState.itemKey(it.key) }, contentType = { if (it.widget == null) "selected" else "widget" }) { entry ->
                 val dragging = reorder.draggingKey == entry.key
-                val offset by animateFloatAsState(if (dragging) reorder.translation else 0f,
-                    animationSpec = if (dragging) snap() else spring(), label = "selectionDrop")
+                val offset by rememberReorderTranslation(reorder, entry.key)
                 val background by animateColorAsState(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer,
                     label = "selectionLift")
                 val index = reorder.keys.indexOf(entry.key)
                 val moveUp = stringResource(R.string.favorites_move_up)
                 val moveDown = stringResource(R.string.favorites_move_down)
                 Column(Modifier.then(if (dragging) Modifier else Modifier.animateItem())
-                    .zIndex(if (dragging || offset != 0f) 1f else 0f)
-                    .graphicsLayer { translationY = if (dragging) reorder.translation else offset }
+                    .zIndex(if (dragging || reorder.drop?.key == entry.key) 1f else 0f)
+                    .graphicsLayer { translationY = offset }
                     .clip(RoundedCornerShape(16.dp)).background(background)
                     .semantics {
                         customActions = buildList {

@@ -6,9 +6,6 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -48,6 +45,7 @@ import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.LauncherSearchBar
 import com.galaxyrio.gracelauncher.ui.components.SelectionScrollbar
 import com.galaxyrio.gracelauncher.ui.overlays.FavoritesReorderState
+import com.galaxyrio.gracelauncher.ui.overlays.rememberReorderTranslation
 import com.galaxyrio.gracelauncher.ui.theme.rememberAppFontFamily
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
@@ -196,8 +194,7 @@ internal fun FontSettings(uiState: LauncherUiState, actions: LauncherActions, on
                 item("search") { LauncherSearchBar(query, stringResource(R.string.font_search), "font_query"); Spacer(Modifier.height(12.dp)) }
                 items(filtered, key = { FavoritesReorderState.itemKey(it) }) { id ->
                     val dragging = reorder.draggingKey == id
-                    val offset by animateFloatAsState(if (dragging) reorder.translation else 0f,
-                        animationSpec = if (dragging) snap() else spring(), label = "fontDrop")
+                    val offset by rememberReorderTranslation(reorder, id)
                     val checked = if (deleting) id in deletion else id in library.selected
                     val canSelect = enabled && (!deleting || id in imported)
                     val up = stringResource(R.string.favorites_move_up)
@@ -208,8 +205,8 @@ internal fun FontSettings(uiState: LauncherUiState, actions: LauncherActions, on
                         else actions.updateSettings { it.copy(fontLibrary = it.fontLibrary.toggle(id, available)) }
                     }
                     Row(Modifier.then(if (dragging) Modifier else Modifier.animateItem())
-                        .zIndex(if (dragging || offset != 0f) 1f else 0f)
-                        .graphicsLayer { translationY = if (dragging) reorder.translation else offset }
+                        .zIndex(if (dragging || reorder.drop?.key == id) 1f else 0f)
+                        .graphicsLayer { translationY = offset }
                         .fillMaxWidth().heightIn(min = 64.dp).clip(MaterialTheme.shapes.large)
                         .background(if (dragging) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer)
                         .combinedClickable(enabled = canSelect, role = Role.Checkbox, onClick = { toggle() },

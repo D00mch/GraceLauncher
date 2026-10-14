@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -48,6 +49,12 @@ import kotlinx.coroutines.launch
 
 private enum class DesignerPage { Single, All, Data }
 
+// Keep live edits typed. JSON is only needed when Android saves/restores this page,
+// not on every slider tick (including decoding the unchanged baseline).
+private val DesignerChoiceSaver = Saver<ItemIcon, String>(
+    save = { it.encode() }, restore = { ItemIcon.decode(it) },
+)
+
 @Composable
 internal fun IconDesignerSettings(
     uiState: LauncherUiState, actions: LauncherActions, selectedKey: String?, onBack: () -> Unit,
@@ -63,31 +70,30 @@ internal fun IconDesignerSettings(
     val app = selectedKey?.let(uiState::findItem) ?: fallbackApp?.takeIf { it.key == selectedKey }
     val button = app?.isGraceButton == true
     val initial = initialDesignerChoice(uiState, app)
-    var special by rememberSaveable(selectedKey, app?.key) { mutableStateOf(initial.encode()) }
-    var specialBaseline by rememberSaveable(selectedKey, app?.key) { mutableStateOf(initial.encode()) }
+    var special by rememberSaveable(selectedKey, app?.key, stateSaver = DesignerChoiceSaver) { mutableStateOf(initial) }
+    var specialBaseline by rememberSaveable(selectedKey, app?.key, stateSaver = DesignerChoiceSaver) { mutableStateOf(initial) }
     var specialSaved by rememberSaveable(selectedKey, app?.key) { mutableStateOf(selectedKey in uiState.itemIcons) }
-    var bulk by rememberSaveable { mutableStateOf(ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState),
-        display = uiState.settings.iconDisplay).encode()) }
-    var bulkBaseline by rememberSaveable { mutableStateOf(bulk) }
+    var bulk by rememberSaveable(stateSaver = DesignerChoiceSaver) { mutableStateOf(ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState),
+        display = uiState.settings.iconDisplay)) }
+    var bulkBaseline by rememberSaveable(stateSaver = DesignerChoiceSaver) { mutableStateOf(bulk) }
     var pendingImages by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var sourcePicker by rememberSaveable { mutableStateOf(false) }
     var colorPicker by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingAction by rememberSaveable { mutableStateOf<String?>(null) }
     var selection by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var saving by remember { mutableStateOf(false) }
-    val specialChoice = remember(special) { ItemIcon.decode(special) ?: initial }
-    val bulkChoice = remember(bulk) { ItemIcon.decode(bulk) ?: ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState),
-        display = uiState.settings.iconDisplay) }
+    val specialChoice = special
+    val bulkChoice = bulk
     val choice = if (page == DesignerPage.All) bulkChoice else specialChoice
     val design = choice.design ?: IconDesign()
     val dirty = when (page) {
-        DesignerPage.Single -> app != null && normalizedChoice(specialChoice) != normalizedChoice(ItemIcon.decode(specialBaseline) ?: initial)
-        DesignerPage.All -> normalizedChoice(bulkChoice) != normalizedChoice(ItemIcon.decode(bulkBaseline) ?: ItemIcon.Theme)
+        DesignerPage.Single -> app != null && normalizedChoice(specialChoice) != normalizedChoice(specialBaseline)
+        DesignerPage.All -> normalizedChoice(bulkChoice) != normalizedChoice(bulkBaseline)
         DesignerPage.Data -> false
     }
     fun change(value: ItemIcon) {
         if (saving) return
-        if (page == DesignerPage.All) bulk = value.encode() else if (page == DesignerPage.Single && app != null) special = value.encode()
+        if (page == DesignerPage.All) bulk = value else if (page == DesignerPage.Single && app != null) special = value
     }
     fun changeDesign(value: IconDesign) { change(choice.copy(design = value.normalized())) }
     suspend fun cleanImports(keep: String? = null) {
@@ -103,8 +109,7 @@ internal fun IconDesignerSettings(
             target.startsWith("page:") -> {
                 colorPicker = null; sourcePicker = false; selection = emptyList()
                 if (target == "page:Single" && !specialSaved) {
-                    val savedBulk = ItemIcon.decode(bulkBaseline)
-                    special = initialDesignerChoice(uiState.copy(settings = uiState.settings.copy(iconDesign = savedBulk)), app).encode()
+                    special = initialDesignerChoice(uiState.copy(settings = uiState.settings.copy(iconDesign = bulkBaseline)), app)
                     specialBaseline = special
                 }
                 pageName = target.removePrefix("page:")
@@ -114,7 +119,7 @@ internal fun IconDesignerSettings(
                 if (uiState.findItem(key) == null && fallbackApp?.key != key) {
                     Toast.makeText(context, R.string.app_unavailable, Toast.LENGTH_SHORT).show()
                 } else {
-                    special = initialDesignerChoice(uiState, uiState.findItem(key) ?: fallbackApp).encode()
+                    special = initialDesignerChoice(uiState, uiState.findItem(key) ?: fallbackApp)
                     specialBaseline = special
                     specialSaved = true
                     onSelectApp(key); selection = emptyList(); pageName = DesignerPage.Single.name
@@ -138,8 +143,8 @@ internal fun IconDesignerSettings(
                 val success = if (savedPage == DesignerPage.All) actions.applyIconDesign(saved)
                     else savedApp?.let { actions.setItemIcon(it, saved) } == true
                 if (success) {
-                    if (savedPage == DesignerPage.All) { bulk = saved.encode(); bulkBaseline = bulk }
-                    else { special = saved.encode(); specialBaseline = special; specialSaved = true }
+                    if (savedPage == DesignerPage.All) { bulk = saved; bulkBaseline = bulk }
+                    else { special = saved; specialBaseline = special; specialSaved = true }
                     cleanImports(saved.source.takeIf { saved.kind == "image" })
                     colorPicker = null; pendingAction = null
                     if (then != null) perform(then)
@@ -193,23 +198,23 @@ internal fun IconDesignerSettings(
         if (app != null) value = store.layers(app, specialChoice, uiState.settings, size = 768)
     }
     val layered = layers?.layered ?: (specialChoice.kind != "image" && app?.isAdaptiveIcon == true)
-    val dynamicColors = store.dynamicColors(uiState.settings)
-    val themeColors = store.themeColors(uiState.settings)
+    val dynamicColors = remember(store, uiState.settings, configuration) { store.dynamicColors(uiState.settings) }
+    val themeColors = remember(store, uiState.settings, configuration) { store.themeColors(uiState.settings) }
     val shared = bulkChoice.design ?: sharedDesignerDefaults(uiState)
     // Drafts can initialize before Room emits; re-seed them while still pristine so a
     // saved override (or the shared display) is not frozen as "default" on first load.
     val savedIcon = app?.let { uiState.itemIcons[it.key] }
     LaunchedEffect(savedIcon, app?.key) {
-        if (normalizedChoice(specialChoice) == normalizedChoice(ItemIcon.decode(specialBaseline) ?: initial)) {
-            val seeded = initialDesignerChoice(uiState, app).encode()
+        if (normalizedChoice(specialChoice) == normalizedChoice(specialBaseline)) {
+            val seeded = initialDesignerChoice(uiState, app)
             if (seeded != special) { special = seeded; specialBaseline = seeded }
         }
         specialSaved = savedIcon != null
     }
     LaunchedEffect(uiState.settings.iconDesign, uiState.settings.iconDisplay) {
-        if (normalizedChoice(bulkChoice) == normalizedChoice(ItemIcon.decode(bulkBaseline) ?: ItemIcon.Theme)) {
+        if (normalizedChoice(bulkChoice) == normalizedChoice(bulkBaseline)) {
             val seeded = ItemIcon.Theme.copy(design = sharedDesignerDefaults(uiState),
-                display = uiState.settings.iconDisplay).encode()
+                display = uiState.settings.iconDisplay)
             if (seeded != bulk) { bulk = seeded; bulkBaseline = seeded }
         }
     }
@@ -227,7 +232,7 @@ internal fun IconDesignerSettings(
                             if (actions.deleteIconDesigns(keys)) {
                                 selection = emptyList()
                                 if (selectedKey in keys) {
-                                    special = initialDesignerChoice(uiState, app, includeSpecial = false).encode()
+                                    special = initialDesignerChoice(uiState, app, includeSpecial = false)
                                     specialBaseline = special
                                     specialSaved = false
                                 }

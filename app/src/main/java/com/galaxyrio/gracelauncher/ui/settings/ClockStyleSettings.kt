@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,25 +64,26 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 
+private val ClockStyleDraftSaver = Saver<ClockStyle, String>(save = { it.encode() }, restore = { ClockStyle.decode(it) })
+
 @Composable
 internal fun ClockStyleSettings(uiState: LauncherUiState, actions: LauncherActions, onBack: () -> Unit, onManageFonts: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // A scalar saved-state draft survives recreation without changing the desktop.
-    var encoded by rememberSaveable { mutableStateOf(uiState.settings.clockStyle.encode()) }
-    val draft = remember(encoded) { ClockStyle.decode(encoded) }
+    // Preserve recreation support without serializing all presets on every drag frame.
+    var draft by rememberSaveable(stateSaver = ClockStyleDraftSaver) { mutableStateOf(uiState.settings.clockStyle) }
     val face = draft.face
-    fun changeFace(transform: (ClockFaceStyle) -> ClockFaceStyle) { encoded = draft.withFace(transform(face)).encode() }
+    fun changeFace(transform: (ClockFaceStyle) -> ClockFaceStyle) { draft = draft.withFace(transform(draft.face)) }
     var dialog by rememberSaveable { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
     val store = remember(context) { ClockFontStore(context) }
     val fonts by produceState<List<ClockFontFile>?>(null, store) { value = store.list() }
     LaunchedEffect(fonts) {
         val available = fonts?.map { it.id }?.toSet() ?: return@LaunchedEffect
-        val current = ClockStyle.decode(encoded)
+        val current = draft
         val missing = (listOf(current.singleLine, current.twoLines) + current.presets.values).mapNotNull { it.fontId }
             .filter { ClockFontStore.displayName(it) != null && it !in available }.toSet()
-        if (missing.isNotEmpty()) encoded = current.withoutFonts(missing).encode()
+        if (missing.isNotEmpty()) draft = current.withoutFonts(missing)
     }
     if (dialog == "font" && draft.layout.allowsCustomFont) {
         FontPickerDialog(uiState.settings.fontLibrary, face.fontId,
@@ -133,7 +135,7 @@ internal fun ClockStyleSettings(uiState: LauncherUiState, actions: LauncherActio
                 ) {
                     clockSetting("layout") {
                         ClockLayoutSelector(draft, count, enabled = !saving) {
-                            encoded = draft.copy(layout = it).encode()
+                            draft = draft.copy(layout = it)
                         }
                     }
                     if (allowsFont) clockSetting("font") {
