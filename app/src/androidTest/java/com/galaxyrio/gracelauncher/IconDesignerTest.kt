@@ -102,6 +102,36 @@ class IconDesignerTest {
         compose.onNodeWithTag("icon_designer_app:${apps[index].key}").performClick()
     }
 
+    @Test fun displayModeIsFirstAndOnlyItsOwnControlsRemain() {
+        show()
+        val displayBounds = compose.onNodeWithTag("icon_designer_display").fetchSemanticsNode().boundsInRoot
+        val sizeBounds = compose.onNodeWithTag("icon_designer_display_size").fetchSemanticsNode().boundsInRoot
+        assertTrue(displayBounds.bottom <= sizeBounds.top)
+        compose.onNodeWithTag("icon_designer_display:Dot", useUnmergedTree = true).performClick().assertIsSelected()
+        compose.onNodeWithTag("icon_designer_display_size").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_effects").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_dot_size").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(18f) }
+        compose.onNodeWithTag("icon_designer_dot_shape").performScrollTo()
+        compose.onNodeWithTag("icon_designer_dot_shapes").performScrollToIndex(2)
+        compose.onNodeWithTag("icon_designer_dot_shape:Square").performClick()
+        compose.onNodeWithTag("icon_designer_dot_square_corner_radius").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(35f) }
+        compose.onNodeWithTag("icon_designer_display").performScrollTo()
+        compose.onNodeWithTag("icon_designer_display:Hidden", useUnmergedTree = true).performClick().assertIsSelected()
+        compose.onNodeWithTag("icon_designer_dot_shape").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_dot_size").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_effects").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_display:Dot", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("icon_designer_save").performClick()
+        compose.runOnIdle {
+            assertEquals(18, bulkSaved?.display?.dotSize)
+            assertEquals(IconShape.Square, bulkSaved?.display?.dotShape)
+            assertEquals(35, bulkSaved?.display?.dotSquareCornerRadius)
+            assertEquals(IconShape.None, bulkSaved?.design?.shape)
+        }
+    }
+
     @Test fun singleControlsStayDraftsUntilSaveAndColorPickerStaysBelowPreview() {
         show(); chooseApp()
         compose.onNodeWithTag("icon_designer_shape").performScrollTo()
@@ -197,22 +227,22 @@ class IconDesignerTest {
             .performScrollToNode(hasTestTag("icon_designer_display"))
         compose.onNodeWithTag("icon_designer_display:Dot", useUnmergedTree = true).assertIsSelected()
         compose.onNodeWithTag("icon_designer_display_reset", useUnmergedTree = true).assertDoesNotExist()
-        // Switch to an app that carries a saved per-app override.
-        state = state.copy(itemIcons = mapOf(apps[1].key to ItemIcon("theme",
+        // A saved override arriving after the initial composition replaces the
+        // pristine draft, even though Dot has no full-artwork controls.
+        compose.onNodeWithTag("icon_designer_switch").assertDoesNotExist()
+        state = state.copy(itemIcons = mapOf(apps[4].key to ItemIcon("theme",
             display = IconDisplaySettings(style = IconDisplayStyle.Dot,
                 dotColor = IconDotColor.Custom, dotSize = 14, customColor = IconColor(0xFF336699.toInt())))))
         compose.onNodeWithTag("icon_designer_controls")
-            .performScrollToNode(hasTestTag("icon_designer_switch"))
-        compose.onNodeWithTag("icon_designer_switch").performClick()
-        compose.onNodeWithTag("icon_designer_app_query").performTextReplacement("App 1")
-        compose.onNodeWithTag("icon_designer_app:${apps[1].key}").performClick()
-        compose.onNodeWithTag("icon_designer_controls")
             .performScrollToNode(hasTestTag("icon_designer_display"))
         compose.onNodeWithTag("icon_designer_display:Dot", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("icon_designer_dot_colors").performScrollTo()
         compose.onNodeWithTag("icon_designer_dot_color:Custom", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("icon_designer_display").performScrollTo()
         compose.onNodeWithTag("icon_designer_display_reset", useUnmergedTree = true).assertIsEnabled()
         // Resetting clears the override back to the shared dots, without writing.
         compose.onNodeWithTag("icon_designer_display_reset", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("icon_designer_dot_colors").performScrollTo()
         compose.onNodeWithTag("icon_designer_dot_color:Artwork", useUnmergedTree = true).assertIsSelected()
     }
 

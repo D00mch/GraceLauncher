@@ -357,7 +357,8 @@ class LauncherSettingsPersistenceTest {
     @Test
     fun iconDisplaySurvivesRoundTripInsideIconDesignJson() = runBlocking {
         val repository = openRepository()
-        val dotted = IconDisplaySettings(style = IconDisplayStyle.Dot, dotColor = IconDotColor.Theme, dotSize = 18)
+        val dotted = IconDisplaySettings(style = IconDisplayStyle.Dot, dotColor = IconDotColor.Theme, dotSize = 18,
+            dotShape = IconShape.Pebble, dotPebbleRoundness = 63, dotSquareCornerRadius = 30, dotCookieSides = 7)
         repository.updateSettings(LauncherSettings(iconDesign = ItemIcon.Theme.copy(display = dotted)))
         val restored = withTimeout(10_000) { openRepository().snapshots.first().settings }
         // The shared display is derived from the bulk icon design, same field per-app
@@ -383,12 +384,17 @@ class LauncherSettingsPersistenceTest {
         // Unknown enum names and out-of-range sizes degrade field by field.
         assertEquals(IconDisplaySettings(style = IconDisplayStyle.Dot, dotSize = 32),
             IconDisplaySettings.decode("""{"style":"Dot","dotColor":"bogus","dotSize":99}"""))
+        // Existing dots stay circular; malformed new fields cannot break shape rendering.
+        assertEquals(IconShape.Circle, IconDisplaySettings.decode("""{"style":"Dot"}""").dotShape)
+        assertEquals(IconDisplaySettings(style = IconDisplayStyle.Dot, dotPebbleRoundness = 0, dotSquareCornerRadius = 100),
+            IconDisplaySettings.decode("""{"style":"Dot","dotShape":"bogus","dotCookieSides":3,"dotPebbleRoundness":-5,"dotSquareCornerRadius":200}"""))
     }
 
     @Test
     fun itemIconDisplayOverrideSurvivesEncodeAndStaysAbsentByDefault() {
         val override = IconDisplaySettings(style = IconDisplayStyle.Dot,
-            dotColor = IconDotColor.Custom, dotSize = 14, customColor = IconColor(0xFF336699.toInt()))
+            dotColor = IconDotColor.Custom, dotSize = 14, customColor = IconColor(0xFF336699.toInt()),
+            dotShape = IconShape.Cookie, dotCookieSides = 12)
         val icon = ItemIcon("pack", "icons", "name", display = override)
         assertEquals(override, ItemIcon.decode(icon.encode())?.display)
         // No override stays null so the app keeps inheriting the shared setting.

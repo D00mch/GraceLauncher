@@ -1,4 +1,5 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 
 package com.galaxyrio.gracelauncher.ui.settings
 
@@ -30,6 +31,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.IconColor
@@ -53,12 +55,77 @@ internal fun LazyListScope.iconDesignerControls(
     onPositionAndSize: (() -> Unit)? = null,
     colorModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
+    // The Grace button is not a list icon and always keeps its complete artwork.
+    val showDisplayModes = !showSuggestions
+    val effective = display ?: inheritedDisplay
+    val style = if (showDisplayModes) effective.style else IconDisplayStyle.Full
     val cookie = design.shape == IconShape.Cookie
     val adjustableCorners = design.shape == IconShape.Pebble || design.shape == IconShape.Square
     val canAddTray = all || !layered
-    val count = (if (all) 9 else 10) + (if (cookie || adjustableCorners) 1 else 0) +
-        (if (canAddTray) 1 else 0) + (if (showSuggestions && !all) 1 else 0)
+    val count = when (style) {
+        IconDisplayStyle.Hidden -> 1
+        IconDisplayStyle.Dot -> 4
+        IconDisplayStyle.Full -> (if (all) 8 else 9) + (if (cookie || adjustableCorners) 1 else 0) +
+            (if (canAddTray) 1 else 0) + (if (showSuggestions && !all) 1 else 0) + (if (showDisplayModes) 1 else 0)
+    }
     var index = 0
+    if (showDisplayModes) {
+        val displayIndex = index++
+        item("display") {
+            DesignerSegment(displayIndex, count, "icon_designer_display") {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.icon_display_section), Modifier.weight(1f))
+                    if (!all) {
+                        if (display != null) ResetIconButton(stringResource(R.string.icon_display_shared), enabled,
+                            "icon_designer_display_reset") { onDisplay(null) }
+                        else Text(stringResource(R.string.icon_display_shared_caption),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                DesignerConnectedChoices(IconDisplayStyle.entries, effective.style, enabled,
+                    "icon_designer_display", { it.label() }) { selected ->
+                    // Selecting the inherited mode need not create a per-app override.
+                    if (all || display != null || selected != inheritedDisplay.style)
+                        onDisplay(effective.copy(style = selected))
+                }
+            }
+        }
+    }
+    if (style == IconDisplayStyle.Hidden) return
+    if (style == IconDisplayStyle.Dot) {
+        item("dot_size") {
+            DesignerSegment(1, count, "icon_designer_dot_size_control") {
+                DesignerSlider(stringResource(R.string.icon_dot_size), effective.dotSize.toFloat(),
+                    (if (all) IconDisplaySettings() else inheritedDisplay).dotSize.toFloat(),
+                    4f..32f, enabled, "icon_designer_dot_size", suffix = "dp") {
+                    onDisplay(effective.copy(dotSize = it.roundToInt()))
+                }
+            }
+        }
+        item("dot_shape") {
+            DesignerSegment(2, count, "icon_designer_dot_shape") {
+                Text(stringResource(R.string.icon_designer_shape))
+                val onShape: (IconDesign) -> Unit = { onDisplay(effective.withDotDesign(it)) }
+                DesignerShapeChoices(effective.dotDesign, enabled, "icon_designer_dot", onShape, includeNone = false)
+                DesignerShapeAdjustment(effective.dotDesign,
+                    (if (all) IconDisplaySettings() else inheritedDisplay).dotDesign, enabled, "icon_designer_dot", onShape)
+            }
+        }
+        item("dot_color") {
+            DesignerSegment(3, count, "icon_designer_dot_colors") {
+                Text(stringResource(R.string.icon_dot_color))
+                DesignerConnectedChoices(IconDotColor.entries, effective.dotColor, enabled,
+                    "icon_designer_dot_color", { it.label() }) { onDisplay(effective.copy(dotColor = it)) }
+                if (effective.dotColor == IconDotColor.Custom) {
+                    DesignerColorRow(stringResource(R.string.icon_designer_custom_color), effective.customColor, IconColor.Theme,
+                        dynamicColors.first, themeColors.first, enabled, "icon_designer_dot_color",
+                        colorModifier("dot"), { onColor("dot") }) { onDisplay(effective.copy(customColor = IconColor.Theme)) }
+                }
+            }
+        }
+        return
+    }
     if (!all) {
         val position = index++
         if (onPositionAndSize != null) {
@@ -186,57 +253,6 @@ internal fun LazyListScope.iconDesignerControls(
                 enabled, "icon_designer_rotation", suffix = "°") { onChange(design.copy(rotation = it)) }
         }
     }
-    val displayIndex = index++
-    item("display") {
-        DesignerSegment(displayIndex, count, "icon_designer_display") {
-            val effective = display ?: inheritedDisplay
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.icon_display_section), Modifier.weight(1f))
-                // Per-item pages show the inherited values until the user changes them;
-                // the reset drops the override so the item follows the shared setting again.
-                if (!all) {
-                    if (display != null) ResetIconButton(stringResource(R.string.icon_display_shared), enabled,
-                        "icon_designer_display_reset") { onDisplay(null) }
-                    else Text(stringResource(R.string.icon_display_shared_caption),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            LazyRow(Modifier.fillMaxWidth().selectableGroup().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconDisplayStyle.entries.forEach { style ->
-                    item(style.name) {
-                        // Chips mirror the resolved style; picking the inherited style while
-                        // inheriting is a no-op, picking another materializes an override.
-                        DisplayOption(style.label(), effective.style == style, enabled,
-                            "icon_designer_display:${style.name}") {
-                            if (display != null || style != inheritedDisplay.style) onDisplay(effective.copy(style = style))
-                        }
-                    }
-                }
-            }
-            if (effective.style == IconDisplayStyle.Dot) {
-                LazyRow(Modifier.fillMaxWidth().selectableGroup().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IconDotColor.entries.forEach { color ->
-                        item(color.name) {
-                            DisplayOption(color.label(), effective.dotColor == color, enabled,
-                                "icon_designer_dot_color:${color.name}") { onDisplay(effective.copy(dotColor = color)) }
-                        }
-                    }
-                }
-                if (effective.dotColor == IconDotColor.Custom) {
-                    DesignerColorRow(stringResource(R.string.icon_dot_color), effective.customColor, IconColor.Theme,
-                        dynamicColors.first, themeColors.first, enabled, "icon_designer_dot_color",
-                        colorModifier("dot"), { onColor("dot") }) { onDisplay(effective.copy(customColor = IconColor.Theme)) }
-                }
-                DesignerSlider(stringResource(R.string.icon_dot_size), effective.dotSize.toFloat(), inheritedDisplay.dotSize.toFloat(),
-                    4f..32f, enabled, "icon_designer_dot_size", suffix = "dp") {
-                    onDisplay(effective.copy(dotSize = it.roundToInt()))
-                }
-            }
-        }
-    }
     item("effects") {
         SegmentedListItem(shapes = ListItemDefaults.segmentedShapes(index, count),
             colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
@@ -247,9 +263,10 @@ internal fun LazyListScope.iconDesignerControls(
 }
 
 @Composable
-internal fun DesignerShapeChoices(design: IconDesign, enabled: Boolean, tag: String, onChange: (IconDesign) -> Unit) {
+internal fun DesignerShapeChoices(design: IconDesign, enabled: Boolean, tag: String, onChange: (IconDesign) -> Unit,
+    includeNone: Boolean = true) {
     LazyRow(Modifier.fillMaxWidth().selectableGroup().testTag("${tag}_shapes").padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(IconShape.entries, key = { it.name }) { shape ->
+        items(IconShape.entries.filter { includeNone || it != IconShape.None }, key = { it.name }) { shape ->
             val label = shape.label()
             val selected = shape == design.shape
             val color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -347,12 +364,22 @@ private fun DesignerColorRow(label: String, choice: IconColor?, default: IconCol
 }
 
 @Composable
-private fun DisplayOption(label: String, selected: Boolean, enabled: Boolean, tag: String, onClick: () -> Unit) {
-    Surface(shape = MaterialTheme.shapes.large, onClick = onClick, enabled = enabled,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-        modifier = Modifier.testTag(tag).semantics { contentDescription = label; this.selected = selected; role = Role.RadioButton }) {
-        Text(label, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+private fun <T : Enum<T>> DesignerConnectedChoices(options: List<T>, selected: T, enabled: Boolean, tag: String,
+    label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(top = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+        options.forEachIndexed { index, option ->
+            ToggleButton(checked = selected == option, onCheckedChange = { onSelect(option) }, enabled = enabled,
+                shapes = when (index) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                }, modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp).testTag("$tag:${option.name}")
+                    .semantics { this.selected = selected == option; role = Role.RadioButton },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)) {
+                Text(label(option), style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+            }
+        }
     }
 }
 

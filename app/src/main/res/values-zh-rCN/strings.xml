@@ -410,6 +410,17 @@
     <string name="icon_designer_size">符号大小</string>
     <string name="icon_designer_rotation">旋转</string>
     <string name="icon_designer_effects">效果</string>
+    <string name="icon_display_section">图标显示</string>
+    <string name="icon_display_full">完整图标</string>
+    <string name="icon_display_dot">点</string>
+    <string name="icon_display_hidden">不显示</string>
+    <string name="icon_display_shared">全局设置</string>
+    <string name="icon_display_shared_caption">跟随全局设置</string>
+    <string name="icon_dot_color">点的颜色</string>
+    <string name="icon_dot_color_artwork">图标取色</string>
+    <string name="icon_dot_color_theme">主题色</string>
+    <string name="icon_dot_color_custom">自定义</string>
+    <string name="icon_dot_size">点的大小</string>
     <string name="icon_designer_drag_symbol">%1$s · 拖动调整位置，双指缩放和旋转</string>
     <string name="icon_designer_color_done">完成</string>
     <string name="icon_designer_reset">重置</string>

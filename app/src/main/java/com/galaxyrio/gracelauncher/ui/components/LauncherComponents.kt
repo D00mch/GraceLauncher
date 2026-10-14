@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.animateColorAsState
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.draw.clip
@@ -72,11 +74,13 @@ import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.IconDisplayStyle
 import com.galaxyrio.gracelauncher.data.IconDotColor
+import com.galaxyrio.gracelauncher.data.IconShape
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.LauncherFolder
 import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
 import com.galaxyrio.gracelauncher.data.WorkProfileFolderId
 import com.galaxyrio.gracelauncher.data.RecentlyInstalledFolderId
+import com.galaxyrio.gracelauncher.data.icons.iconShapePath
 import com.galaxyrio.gracelauncher.data.notifications.AppNotification
 import com.galaxyrio.gracelauncher.ui.theme.LocalLauncherAppearance
 import com.galaxyrio.gracelauncher.ui.theme.effectiveDisplay
@@ -116,6 +120,14 @@ fun AppIcon(app: LauncherApp, modifier: Modifier = Modifier, size: Dp = 38.dp, a
             style == IconDisplayStyle.Hidden -> Unit
             style == IconDisplayStyle.Dot -> {
                 val dotSize = (display.dotSize * if (applyDisplaySize) appearance.iconSize / 100f else 1f).dp
+                val dotShape = remember(display.dotShape, display.dotCookieSides,
+                    display.dotPebbleRoundness, display.dotSquareCornerRadius) {
+                    if (display.dotShape == IconShape.Circle || display.dotShape == IconShape.None) CircleShape
+                    else GenericShape { bounds, _ ->
+                        addPath(iconShapePath(display.dotShape, display.dotCookieSides, bounds.minDimension,
+                            display.dotPebbleRoundness, display.dotSquareCornerRadius).asComposePath())
+                    }
+                }
                 // Decorative only; rows keep their own label semantics.
                 val dotColor = when {
                     app.folderId != null -> MaterialTheme.colorScheme.primary
@@ -129,7 +141,7 @@ fun AppIcon(app: LauncherApp, modifier: Modifier = Modifier, size: Dp = 38.dp, a
                     else -> MaterialTheme.colorScheme.primary
                 }
                 Box(Modifier.align(Alignment.Center).size(dotSize)) {
-                    Box(Modifier.fillMaxSize().clip(CircleShape).background(dotColor))
+                    Box(Modifier.fillMaxSize().background(dotColor, dotShape))
                     if (showBadge) IconBadge(app, (dotSize * 0.55f).coerceAtLeast(9.dp), Modifier.align(Alignment.BottomEnd))
                 }
             }

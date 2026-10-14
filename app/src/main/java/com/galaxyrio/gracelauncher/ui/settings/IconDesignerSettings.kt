@@ -27,9 +27,11 @@ import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.IconDesign
+import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.IconDisplayStyle
 import com.galaxyrio.gracelauncher.data.icons.IconLayers
 import com.galaxyrio.gracelauncher.data.icons.ItemIconStore
+import com.galaxyrio.gracelauncher.data.icons.isGraceButton
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
 import com.galaxyrio.gracelauncher.ui.components.LauncherSymbol
@@ -45,8 +47,9 @@ internal fun IconDesignerPreview(
     onChange: (IconDesign) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val appearance = rememberLauncherAppearance(uiState.textMode, uiState.themedIcons,
-        iconDisplay = choice.display ?: uiState.settings.iconDisplay)
+    val rowDisplay = if (!all && selectedApp?.isGraceButton == true) IconDisplaySettings()
+        else choice.display ?: uiState.settings.iconDisplay
+    val appearance = rememberLauncherAppearance(uiState.textMode, uiState.themedIcons, iconDisplay = rowDisplay)
     val shape = ListItemDefaults.segmentedShapes(0, 1).shape
     Box(modifier.fillMaxWidth().testTag("icon_designer_preview").drawWithContent {
         // Match Clock style's window onto the real wallpaper, including live wallpapers.
@@ -70,7 +73,6 @@ internal fun IconDesignerPreview(
                     DesignerPreviewIcon(selectedApp, layers, design, dynamicColors, 160.dp * (design.iconSize / 100f),
                         Modifier.testTag("icon_designer_selected_app"), draggable = enabled, onChange = onChange, themeColors = themeColors)
                     // How the app reads on a launcher row under the resolved display style.
-                    val rowDisplay = choice.display ?: uiState.settings.iconDisplay
                     Row(Modifier.align(Alignment.BottomCenter).testTag("icon_designer_display_result")
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), MaterialTheme.shapes.medium)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
