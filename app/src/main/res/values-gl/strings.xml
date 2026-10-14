@@ -595,4 +595,13 @@
     <string name="alphabet_free_movement">Libre movemento</string>
     <string name="alphabet_free_movement_summary">Arrastra máis alá de calquera dos extremos para mover o alfabeto. Solta para volver á posición inicial.</string>
     <string name="alphabet_automatic_spacing">Automático · Espazado de %1$d dp</string>
+    <string name="grace_button_position_size">Posición e tamaño</string>
+    <string name="grace_button_alignment">Aliñamento</string>
+    <string name="grace_button_align_left">Esquerda</string>
+    <string name="grace_button_align_center">Centro</string>
+    <string name="grace_button_align_right">Dereita</string>
+    <string name="grace_button_side_distance">Distancia desde o lado</string>
+    <string name="grace_button_bottom_distance">Distancia desde a parte inferior</string>
+    <string name="grace_button_size">Tamaño do botón</string>
+    <string name="grace_button_position_hint">Arrastra o botón para cambiar a súa posición</string>
 </resources>
