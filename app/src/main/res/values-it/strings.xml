@@ -171,7 +171,7 @@
     <string name="settings_title">Impostazioni</string>
     <string name="settings_back">Indietro</string>
     <string name="settings_productivity">Produttività</string>
-    <string name="settings_productivity_summary">In uno sguardo, app e cartelle</string>
+    <string name="settings_productivity_summary">A colpo d\'occhio, app e cartelle</string>
     <string name="settings_themes">Aspetto</string>
     <string name="settings_themes_summary">Colori, aspetto e personalizzazione</string>
     <string name="settings_advanced">Avanzate</string>
@@ -631,9 +631,9 @@
     <string name="icon_color_from_app_summary">Usa l\'icona originale di ogni app, senza pacchetti icona. Se non trova un colore adatto, usa quello del tema.</string>
     <string name="settings_palette_style">Stile palette</string>
     <string name="palette_tonal_spot">Tonale</string>
-    <string name="palette_neutral">Neutro</string>
+    <string name="palette_neutral">Neutra</string>
     <string name="palette_vibrant">Vivace</string>
-    <string name="palette_expressive">Espressivo</string>
+    <string name="palette_expressive">Espressiva</string>
     <string name="palette_rainbow">Arcobaleno</string>
     <string name="palette_fruit_salad">Macedonia</string>
     <string name="palette_monochrome">Monocromatica</string>
@@ -643,4 +643,8 @@
     <string name="settings_folder_auto_hide">Nascondi automaticamente le app dentro</string>
     <string name="settings_folder_auto_hide_summary">Nascondi dall\'elenco delle app quelle già presenti e quelle che verranno aggiunte. Le app nascoste manualmente restano nascoste anche quando escono da questa cartella.</string>
     <string name="hidden_from_folder">Nascosta dalla cartella</string>
+    <string name="icon_designer_square_aspect_ratio">Proporzioni</string>
+    <string name="icon_designer_saturation">Saturazione</string>
+    <string name="icon_designer_brightness">Luminosità</string>
+    <string name="icon_color_relative_summary">Con 0 la sorgente resta invariata. Le regolazioni seguono i futuri cambi di colore; saturazione e luminosità usano punti percentuali.</string>
 </resources>
