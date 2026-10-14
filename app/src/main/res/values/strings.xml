@@ -13,6 +13,8 @@
     <string name="settings_grace_button">Grace button</string>
     <string name="grace_button_position_size">Position and size</string>
     <string name="grace_button_alignment">Alignment</string>
+    <string name="grace_button_show_on">Show on</string>
+    <string name="grace_button_show_both">Both</string>
     <string name="grace_button_align_left">Left</string>
     <string name="grace_button_align_center">Center</string>
     <string name="grace_button_align_right">Right</string>

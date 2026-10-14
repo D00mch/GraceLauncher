@@ -2,6 +2,8 @@
 <resources>
     <string name="grace_button_position_size">位置和大小</string>
     <string name="grace_button_alignment">对齐</string>
+    <string name="grace_button_show_on">显示范围</string>
+    <string name="grace_button_show_both">两者</string>
     <string name="grace_button_align_left">靠左</string>
     <string name="grace_button_align_center">居中</string>
     <string name="grace_button_align_right">靠右</string>

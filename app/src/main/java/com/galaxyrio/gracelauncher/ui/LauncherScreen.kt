@@ -702,9 +702,11 @@ internal fun LauncherScreen(
     }
     BackHandler(enabled = buttonTransition != null) {
         if (buttonTransition?.lockCommitted != true) {
+            val openingAppList = buttonTransition?.action == GraceButtonAction.AppList
             buttonTransition = null
             overlay = null
-            drawerOpen = false
+            // Search and lock transitions may now start in the app list; keep that page.
+            if (openingAppList) drawerOpen = false
         }
     }
 
@@ -870,6 +872,7 @@ internal fun LauncherScreen(
     // Only a real button gesture morphs the button into search/the app list.
     fun performGestureAction(target: GraceButtonTarget, origin: GraceButtonOrigin, fromButton: Boolean = true) {
         if (!target.active || buttonTransition != null || systemActionAccess) return
+        if (target.action == GraceButtonAction.AppList && drawerOpen) return
         val buttonSettings = uiState.settings.graceButton
         instantButtonEntrance = fromButton && !buttonSettings.animationsEnabled &&
             target.action in listOf(GraceButtonAction.Search, GraceButtonAction.AppList)
@@ -1051,15 +1054,15 @@ internal fun LauncherScreen(
             onScrubFinished = finishScrubbing,
             autoHide = uiState.settings.hideAlphabet && !drawerOpen,
         )
-        if (!drawerOpen && (editingHome || uiState.settings.graceButton.enabled)) {
+        if ((!drawerOpen && editingHome) || uiState.settings.graceButton.isVisible(drawerOpen)) {
             val buttonBounds = uiState.settings.graceButton.layout.bounds(maxWidth.value, maxHeight.value,
                 statusBarHeight.value, bottomInset.value)
-            GraceButton(settings = uiState.settings.graceButton, editing = editingHome,
+            GraceButton(settings = uiState.settings.graceButton, editing = editingHome && !drawerOpen,
                 size = buttonBounds.size.dp,
                 artwork = uiState.graceButtonApp?.icon.takeIf { GraceButtonIcon.key in uiState.itemIcons },
                 design = GraceButtonIcon.choice(uiState.itemIcons[GraceButtonIcon.key]).design ?: GraceButtonIcon.defaults,
                 enabled = overlay == null && !systemActionAccess && buttonTransition == null,
-                hidden = searchTransition != null,
+                hidden = searchTransition != null || drawerTransition != null,
                 heldOrigin = buttonTransition?.takeIf { it.action == GraceButtonAction.LockScreen && it.originIsButton }?.origin,
                 onGesture = { gesture, origin -> performGestureAction(uiState.settings.graceButton.target(gesture), origin) },
                 onFinishEditing = { editingHome = false },

@@ -2,7 +2,6 @@
 
 package com.galaxyrio.gracelauncher.ui.settings
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,7 +9,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.AbsoluteAlignment
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -20,6 +18,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.GraceButtonAlignment
 import com.galaxyrio.gracelauncher.data.GraceButtonLayout
+import com.galaxyrio.gracelauncher.data.GraceButtonVisibility
 import com.galaxyrio.gracelauncher.data.icons.GraceButtonIcon
 import com.galaxyrio.gracelauncher.ui.LauncherActions
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
@@ -49,6 +50,7 @@ internal fun GraceButtonPositionSettings(uiState: LauncherUiState, actions: Laun
     val direction = LocalLayoutDirection.current
     val window = LocalWindowInfo.current.containerSize
     val insets = WindowInsets.safeDrawing
+    val viewportLeft = with(density) { insets.getLeft(this, direction).toDp().value }
     val viewportWidth = with(density) {
         (window.width - insets.getLeft(this, direction) - insets.getRight(this, direction)).toDp().value.coerceAtLeast(1f)
     }
@@ -57,44 +59,45 @@ internal fun GraceButtonPositionSettings(uiState: LauncherUiState, actions: Laun
     val bottomInset = insets.asPaddingValues().calculateBottomPadding().value
     fun commit(value: GraceButtonLayout = draft) {
         if (!enabled) return
-        draft = value.normalized()
+        val normalized = value.normalized()
+        draft = normalized.copy(bottomMargin = normalized.bottomMargin.coerceAtMost(
+            normalized.maxBottomMargin(viewportHeight, topInset, bottomInset)))
         val placement = draft
         actions.updateSettings { it.copy(graceButton = it.graceButton.copy(layout = placement)) }
     }
     SettingsScaffold(stringResource(R.string.grace_button_position_size), "grace_button_position_page", onBack,
         fixedCollapsed = true) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+          // A roughly 2:1 window onto the desktop; only the mask changes, never the button scale.
+          val previewHeight = ((maxWidth - 32.dp) / 2f).coerceIn(0.dp, maxHeight / 2f)
+          Column(Modifier.fillMaxSize()) {
             LazyColumn(Modifier.fillMaxWidth().weight(1f).testTag("grace_button_position_controls"),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
                 item {
-                    DesignerSegment(0, 3, "grace_button_alignment") {
+                    DesignerSegment(0, 4, "grace_button_alignment") {
                         Text(stringResource(R.string.grace_button_alignment))
-                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(top = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
-                            GraceButtonAlignment.entries.forEachIndexed { index, alignment ->
-                                ToggleButton(checked = draft.alignment == alignment,
-                                    onCheckedChange = { commit(draft.copy(alignment = alignment)) }, enabled = enabled,
-                                    shapes = when (index) {
-                                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                        2 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                    },
-                                    modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp)
-                                        .testTag("grace_button_alignment:${alignment.name}").semantics { role = Role.RadioButton },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)) {
-                                    Text(stringResource(when (alignment) {
-                                        GraceButtonAlignment.Left -> R.string.grace_button_align_left
-                                        GraceButtonAlignment.Center -> R.string.grace_button_align_center
-                                        GraceButtonAlignment.Right -> R.string.grace_button_align_right
-                                    }))
-                                }
-                            }
-                        }
+                        GraceButtonChoices(GraceButtonAlignment.entries, draft.alignment, enabled, "grace_button_alignment",
+                            label = { stringResource(when (it) {
+                                GraceButtonAlignment.Left -> R.string.grace_button_align_left
+                                GraceButtonAlignment.Center -> R.string.grace_button_align_center
+                                GraceButtonAlignment.Right -> R.string.grace_button_align_right
+                            }) }, onSelect = { commit(draft.copy(alignment = it)) })
                     }
                 }
                 item {
-                    DesignerSegment(1, 3, "grace_button_distances") {
+                    DesignerSegment(1, 4, "grace_button_show_on") {
+                        Text(stringResource(R.string.grace_button_show_on))
+                        GraceButtonChoices(GraceButtonVisibility.entries, draft.showOn, enabled, "grace_button_show_on",
+                            label = { stringResource(when (it) {
+                                GraceButtonVisibility.Favorites -> R.string.settings_folder_favorites
+                                GraceButtonVisibility.AppList -> R.string.settings_folder_app_list
+                                GraceButtonVisibility.Both -> R.string.grace_button_show_both
+                            }) }, onSelect = { commit(draft.copy(showOn = it)) })
+                    }
+                }
+                item {
+                    DesignerSegment(2, 4, "grace_button_distances") {
                         val sideLimit = (viewportWidth - draft.size).coerceIn(1f, 2000f)
                         DesignerSlider(stringResource(R.string.grace_button_side_distance), draft.sideMargin.coerceAtMost(sideLimit),
                             defaults.sideMargin.coerceAtMost(sideLimit), 0f..sideLimit,
@@ -102,67 +105,94 @@ internal fun GraceButtonPositionSettings(uiState: LauncherUiState, actions: Laun
                             onFinished = { commit() }, onReset = { commit(draft.copy(sideMargin = defaults.sideMargin)) }) {
                             draft = draft.copy(sideMargin = it)
                         }
-                        val bottomLimit = (viewportHeight - topInset - bottomInset - draft.size).coerceIn(1f, 2000f)
+                        val bottomLimit = draft.maxBottomMargin(viewportHeight, topInset, bottomInset)
                         DesignerSlider(stringResource(R.string.grace_button_bottom_distance), draft.bottomMargin.coerceAtMost(bottomLimit),
-                            defaults.bottomMargin.coerceAtMost(bottomLimit), 0f..bottomLimit, enabled, "grace_button_bottom_distance", suffix = " dp",
+                            defaults.bottomMargin.coerceAtMost(bottomLimit), 0f..bottomLimit, enabled && bottomLimit > 0f, "grace_button_bottom_distance", suffix = " dp",
                             onFinished = { commit() }, onReset = { commit(draft.copy(bottomMargin = defaults.bottomMargin)) }) {
                             draft = draft.copy(bottomMargin = it)
                         }
                     }
                 }
                 item {
-                    DesignerSegment(2, 3, "grace_button_size_control") {
+                    DesignerSegment(3, 4, "grace_button_size_control") {
                         DesignerSlider(stringResource(R.string.grace_button_size), draft.size, defaults.size, 32f..120f,
                             enabled, "grace_button_size", suffix = " dp", onFinished = { commit() },
                             onReset = { commit(draft.copy(size = defaults.size)) }) { draft = draft.copy(size = it) }
                     }
                 }
+                item {
+                    Text(stringResource(R.string.grace_button_position_hint), Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            Column(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp)
-                .padding(top = 12.dp, bottom = 12.dp + LocalSettingsBottomInset.current),
-                horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.grace_button_position_hint), Modifier.padding(bottom = 10.dp),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                GraceButtonPositionPreview(uiState, draft, viewportWidth, viewportHeight, topInset, bottomInset, enabled,
-                    onChange = { draft = it }, onCommit = { commit() }, onCancel = { draft = saved }, modifier = Modifier.weight(1f))
+            GraceButtonPositionPreview(uiState, draft, viewportLeft, viewportWidth, viewportHeight, topInset, bottomInset, enabled,
+                onChange = { draft = it }, onCommit = { commit() }, onCancel = { draft = saved },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    .padding(top = 12.dp, bottom = 12.dp + LocalSettingsBottomInset.current).height(previewHeight))
+          }
+        }
+    }
+}
+
+@Composable
+private fun <T : Enum<T>> GraceButtonChoices(options: List<T>, selected: T, enabled: Boolean, tag: String,
+    label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(top = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+        options.forEachIndexed { index, option ->
+            ToggleButton(checked = selected == option, onCheckedChange = { onSelect(option) }, enabled = enabled,
+                shapes = when (index) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                },
+                modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp)
+                    .testTag("$tag:${option.name}").semantics { role = Role.RadioButton },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)) {
+                Text(label(option))
             }
         }
     }
 }
 
-/** A scaled whole-screen viewport, not a different bottom-half coordinate system. */
+/** A window onto the real lower half: margins mask the desktop instead of moving or scaling it. */
 @Composable
 private fun GraceButtonPositionPreview(uiState: LauncherUiState, layout: GraceButtonLayout,
-    viewportWidth: Float, viewportHeight: Float, topInset: Float, bottomInset: Float, enabled: Boolean,
+    viewportLeft: Float, viewportWidth: Float, viewportHeight: Float, topInset: Float, bottomInset: Float, enabled: Boolean,
     onChange: (GraceButtonLayout) -> Unit, onCommit: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) {
     val latest by rememberUpdatedState(layout)
     val change by rememberUpdatedState(onChange)
     val commit by rememberUpdatedState(onCommit)
     val cancel by rememberUpdatedState(onCancel)
     val density = LocalDensity.current
-    val shape = MaterialTheme.shapes.large
+    val shape = ListItemDefaults.segmentedShapes(0, 1).shape
     val description = stringResource(R.string.grace_button_position_hint)
     val artwork = uiState.graceButtonApp?.icon.takeIf { GraceButtonIcon.key in uiState.itemIcons }
     val design = GraceButtonIcon.choice(uiState.itemIcons[GraceButtonIcon.key]).design ?: GraceButtonIcon.defaults
-    BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        val scale = minOf(maxWidth.value / viewportWidth, maxHeight.value / viewportHeight).coerceAtLeast(.001f)
-        val pixelsPerDp = density.density * scale
-        val bounds = layout.bounds(viewportWidth, viewportHeight, topInset, bottomInset)
-        Box(Modifier.size((viewportWidth * scale).dp, (viewportHeight * scale).dp)
+    var previewOrigin by remember { mutableStateOf<Offset?>(null) }
+    val origin by rememberUpdatedState(previewOrigin)
+    val pixelsPerDp = density.density
+    val bounds = layout.bounds(viewportWidth, viewportHeight, topInset, bottomInset)
+    Box(modifier
             .testTag("grace_button_position_preview").semantics { contentDescription = description }
+            .onGloballyPositioned { coordinates ->
+                previewOrigin = coordinates.positionInWindow() / pixelsPerDp
+            }
             .drawWithContent {
                 drawOutline(shape.createOutline(size, layoutDirection, this), Color.Transparent, blendMode = BlendMode.Clear)
                 drawContent()
-            }.border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape).clip(shape)
-            .pointerInput(viewportWidth, viewportHeight, topInset, bottomInset, scale, enabled) {
+            }.clip(shape)
+            .pointerInput(viewportLeft, viewportWidth, viewportHeight, topInset, bottomInset, pixelsPerDp, enabled) {
                 if (!enabled) return@pointerInput
                 var dragging = false
                 var position = Offset.Zero
                 detectDragGestures(
                     onDragStart = { point ->
+                        val preview = origin ?: return@detectDragGestures
                         val current = latest.bounds(viewportWidth, viewportHeight, topInset, bottomInset)
-                        val hit = Rect(current.left * pixelsPerDp, current.top * pixelsPerDp,
-                            (current.left + current.size) * pixelsPerDp, (current.top + current.size) * pixelsPerDp)
+                        val left = (viewportLeft + current.left - preview.x) * pixelsPerDp
+                        val top = (current.top - preview.y) * pixelsPerDp
+                        val hit = Rect(left, top, left + current.size * pixelsPerDp, top + current.size * pixelsPerDp)
                         dragging = hit.inflate(24.dp.toPx()).contains(point)
                         position = Offset(current.left, current.top)
                     },
@@ -173,15 +203,19 @@ private fun GraceButtonPositionPreview(uiState: LauncherUiState, layout: GraceBu
                         event.consume()
                         val side = latest.bounds(viewportWidth, viewportHeight, topInset, bottomInset).size
                         val moved = position + amount / pixelsPerDp
+                        val lowestTop = (viewportHeight - bottomInset - side).coerceAtLeast(topInset)
+                        val highestTop = (lowestTop - latest.maxBottomMargin(viewportHeight, topInset, bottomInset)).coerceAtLeast(topInset)
                         position = Offset(moved.x.coerceIn(0f, (viewportWidth - side).coerceAtLeast(0f)),
-                            moved.y.coerceIn(topInset, (viewportHeight - bottomInset - side).coerceAtLeast(topInset)))
+                            moved.y.coerceIn(highestTop, lowestTop))
                         change(latest.movedTo(position.x, position.y, viewportWidth, viewportHeight, topInset, bottomInset))
                     }
                 }
             }) {
-            GraceButtonArtwork(artwork, design, (bounds.size * scale).dp,
+        previewOrigin?.let { preview ->
+            GraceButtonArtwork(artwork, design, bounds.size.dp,
                 modifier = Modifier.align(AbsoluteAlignment.TopLeft)
-                    .absoluteOffset(x = (bounds.left * scale).dp, y = (bounds.top * scale).dp))
+                    .absoluteOffset(x = (viewportLeft + bounds.left - preview.x).dp, y = (bounds.top - preview.y).dp)
+                    .wrapContentSize(AbsoluteAlignment.TopLeft, unbounded = true))
         }
     }
 }

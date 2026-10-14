@@ -40,6 +40,8 @@ data class GraceButtonSettings(
     val doubleTapIntervalMs: Int? = null,
     val layout: GraceButtonLayout = GraceButtonLayout(),
 ) {
+    fun isVisible(appList: Boolean): Boolean = enabled && layout.showOn.includes(appList)
+
     fun target(gesture: GraceButtonGesture): GraceButtonTarget = when (gesture) {
         GraceButtonGesture.Tap -> tap
         GraceButtonGesture.LongPress -> longPress
@@ -76,7 +78,8 @@ data class GraceButtonSettings(
         put("doubleTapIntervalMs", doubleTapIntervalMs?.coerceIn(150, 700))
         val placement = layout.normalized()
         put("layout", JSONObject().put("alignment", placement.alignment.name)
-            .put("sideMargin", placement.sideMargin).put("bottomMargin", placement.bottomMargin).put("size", placement.size))
+            .put("sideMargin", placement.sideMargin).put("bottomMargin", placement.bottomMargin).put("size", placement.size)
+            .put("showOn", placement.showOn.name))
         GraceButtonGesture.entries.forEach { gesture ->
             val target = target(gesture)
             put(gesture.storageKey, JSONObject().put("action", target.action.name).put("key", target.itemKey)
@@ -108,6 +111,7 @@ data class GraceButtonSettings(
                     sideMargin = layout.optDouble("sideMargin", defaults.layout.sideMargin.toDouble()).toFloat(),
                     bottomMargin = layout.optDouble("bottomMargin", defaults.layout.bottomMargin.toDouble()).toFloat(),
                     size = layout.optDouble("size", defaults.layout.size.toDouble()).toFloat(),
+                    showOn = GraceButtonVisibility.entries.firstOrNull { it.name == layout.optString("showOn") } ?: defaults.layout.showOn,
                 ).normalized(),
             )
             GraceButtonGesture.entries.forEach { gesture ->
