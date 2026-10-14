@@ -1,5 +1,7 @@
 package com.galaxyrio.gracelauncher.data
 
+import com.materialkolor.PaletteStyle
+
 enum class ThemeMode { System, Light, Dark }
 
 enum class AppFont(val id: String?) {
@@ -15,6 +17,7 @@ data class LauncherSettings(
     val allowHapticFeedback: Boolean = true,
     val useDynamicColors: Boolean = true,
     val themeColor: Int = 0xFF6750A4.toInt(),
+    val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val darkMode: ThemeMode = ThemeMode.System,
     val amoledMode: Boolean = false,
     /** Retained for installations that used the original single-pack setting. */
@@ -93,6 +96,8 @@ data class LauncherFolder(
     val placement: FolderPlacement,
     /** Only affects the app list; favorites always use their shared manual order. */
     val appListAtBottom: Boolean = true,
+    /** Membership-derived hiding never changes the explicit hidden-app table. */
+    val autoHideApps: Boolean = false,
 ) {
     val key: String get() = "folder:$id"
 
@@ -106,6 +111,18 @@ data class LauncherFolder(
 /** A complete first emission is available only after all Room tables have loaded. */
 data class LauncherStorageSnapshot(
     val settings: LauncherSettings = LauncherSettings(),
+    /** Explicit, manually hidden keys only. */
     val hiddenAppKeys: Set<String> = emptySet(),
     val folders: List<LauncherFolder> = emptyList(),
-)
+) {
+    val folderHiddenAppKeys: Set<String> get() = hiddenAppsFromFolders(folders)
+    val effectiveHiddenAppKeys: Set<String> get() = hiddenAppKeys + folderHiddenAppKeys
+}
+
+/** Derive this union from current membership, including folders not shown on any surface. */
+internal fun hiddenAppsFromFolders(folders: List<LauncherFolder>): Set<String> =
+    folders.asSequence().filter { it.autoHideApps }.flatMap { it.appKeys.asSequence() }
+        .filter(String::isNotBlank).toSet()
+
+internal fun decodePaletteStyle(value: String): PaletteStyle =
+    PaletteStyle.entries.firstOrNull { it.name == value } ?: PaletteStyle.TonalSpot

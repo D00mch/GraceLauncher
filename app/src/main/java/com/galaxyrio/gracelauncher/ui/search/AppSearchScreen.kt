@@ -107,8 +107,8 @@ internal fun AppSearchScreen(
         value = emptyList()
         if (settings.enabled && settings.contacts && hasContactsAccess) contactsSource.observe().collect { value = it }
     }
-    val apps = remember(uiState.allApps, uiState.hiddenAppKeys, settings.hiddenApps) {
-        uiState.allApps.filter { it.folderId == null && (settings.hiddenApps || it.key !in uiState.hiddenAppKeys) }
+    val apps = remember(uiState.allApps, uiState.effectiveHiddenAppKeys, settings.hiddenApps) {
+        uiState.allApps.filter { it.folderId == null && (settings.hiddenApps || it.key !in uiState.effectiveHiddenAppKeys) }
     }
     val names = remember(apps) { apps.associate {
         val label = SearchName(it.label)

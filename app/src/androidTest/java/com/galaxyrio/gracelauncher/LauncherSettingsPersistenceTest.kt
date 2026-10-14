@@ -65,7 +65,7 @@ class LauncherSettingsPersistenceTest {
                 LauncherDatabase.Migration14To15, LauncherDatabase.Migration15To16,
                 LauncherDatabase.Migration16To17, LauncherDatabase.Migration17To18,
                 LauncherDatabase.Migration18To19, LauncherDatabase.Migration19To20,
-                LauncherDatabase.Migration20To21).build()
+                LauncherDatabase.Migration20To21, LauncherDatabase.Migration21To22).build()
         database = reopened
         return LauncherSettingsRepository(reopened)
     }
@@ -352,6 +352,31 @@ class LauncherSettingsPersistenceTest {
         assertTrue(snapshot.folders.isEmpty())
         assertEquals(favoritesBefore, favorites.all)
         assertEquals(appearanceBefore, appearance.all)
+    }
+
+    @Test fun folderAutoHidesStaySeparateFromManualHidesAcrossMembershipChangesAndReopen() = runBlocking {
+        var repository = openRepository()
+        val folder = LauncherFolder("auto", "Auto", listOf("one/Activity", "two/Activity"), FolderPlacement.None, autoHideApps = true)
+        repository.hideApp("one/Activity")
+        repository.saveFolder(folder)
+        repository.saveFolder(folder.copy(id = "overlap", appKeys = listOf("two/Activity")))
+        repository.updateSettings(LauncherSettings(paletteStyle = com.materialkolor.PaletteStyle.Expressive))
+        repository = openRepository()
+        val reopened = repository.snapshots.first()
+        assertEquals(com.materialkolor.PaletteStyle.Expressive, reopened.settings.paletteStyle)
+        assertEquals(setOf("one/Activity"), reopened.hiddenAppKeys)
+        assertEquals(setOf("one/Activity", "two/Activity"), reopened.folderHiddenAppKeys)
+
+        // Editing the shared popup must change derived hiding without writing manual keys.
+        LauncherItemsRepository(requireNotNull(database)).updatePopup(folder.key, emptyList()) { listOf(PopupItem("three/Activity")) }
+        var current = repository.snapshots.first()
+        assertEquals(setOf("two/Activity", "three/Activity"), current.folderHiddenAppKeys)
+        assertEquals(setOf("one/Activity", "two/Activity", "three/Activity"), current.effectiveHiddenAppKeys)
+        repository.deleteFolder("overlap")
+        current = repository.snapshots.first()
+        assertEquals(setOf("one/Activity", "three/Activity"), current.effectiveHiddenAppKeys)
+        repository.deleteFolder(folder.id)
+        assertEquals(setOf("one/Activity"), openRepository().snapshots.first().effectiveHiddenAppKeys)
     }
 
     @Test

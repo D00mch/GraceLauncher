@@ -39,7 +39,7 @@ class FavoritesEditorTest {
     private var commits = 0
     private var toggles = 0
 
-    private fun show(selected: List<LauncherApp>, wholeLauncher: Boolean = false) {
+    private fun show(selected: List<LauncherApp>, wholeLauncher: Boolean = false, initialAppKey: String? = null) {
         state = LauncherUiState(apps = apps, favoriteKeys = selected.map(LauncherApp::key).toSet(),
             favoriteOrder = selected.map(LauncherApp::key), isLoadingApps = false, scheduleStatus = ScheduleStatus.Ready)
         val toggle: (LauncherApp) -> Unit = { app ->
@@ -53,13 +53,27 @@ class FavoritesEditorTest {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
                     if (wholeLauncher) LauncherScreen(state, onDateClick = {}, onClockClick = {}, onLaunchApp = {},
                         onToggleFavorite = toggle, actions = LauncherActions(reorderFavorites = reorder))
-                    else Box(Modifier.fillMaxSize()) { FavoritesScreen(state, LauncherActions(), toggle, reorder, onDone = {}) }
+                    else Box(Modifier.fillMaxSize()) { FavoritesScreen(state, LauncherActions(), toggle, reorder, initialAppKey = initialAppKey, onDone = {}) }
                 }
             }
         }
     }
 
     private fun bounds(tag: String) = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+
+    @Test fun enteringFromAnAppSelectsItOnceAndManualUnselectIsNotUndone() {
+        show(listOf(apps[0]), initialAppKey = apps[1].key)
+        compose.onNodeWithTag("favorite:${apps[1].key}").assertIsOn()
+        compose.runOnIdle { assertEquals(1, toggles) }
+        compose.onNodeWithTag("favorite:${apps[1].key}").performClick()
+        compose.runOnIdle { assertFalse(apps[1].key in state.favoriteKeys); assertEquals(2, toggles) }
+    }
+
+    @Test fun enteringFromAnAlreadyFavoriteAppNeverUnselectsIt() {
+        show(listOf(apps[0]), initialAppKey = apps[0].key)
+        compose.onNodeWithTag("favorite:${apps[0].key}").assertIsOn()
+        compose.runOnIdle { assertEquals(0, toggles) }
+    }
 
     private fun assertSelectedOrder(expected: List<LauncherApp>) {
         assertEquals(expected.map(LauncherApp::key), state.favoriteOrder)

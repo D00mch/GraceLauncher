@@ -444,6 +444,8 @@ fun LauncherRoute(
             }
         },
         setHiddenApps = viewModel::setHiddenApps,
+        hideApp = viewModel::hideApp,
+        setFolderAutoHide = viewModel::setFolderAutoHide,
         saveFolder = viewModel::saveFolder,
         updateFolder = viewModel::updateFolder,
         setFolderFavorites = viewModel::setFolderFavorites,
@@ -543,7 +545,7 @@ internal fun LauncherScreen(
             uiState.workProfiles.isNotEmpty() && !uiState.isLoadingSettings && !uiState.settingsLoadFailed
     }
     val workExpanded = workListOpen && workFolder != null && uiState.settings.workProfile.display == PrivateSpaceDisplay.List
-    val workApps = uiState.workProfileApps.filterNot { it.key in uiState.hiddenAppKeys }
+    val workApps = uiState.workProfileApps.filterNot { it.key in uiState.effectiveHiddenAppKeys }
     val privateApps = uiState.privateSpaceApps
     val recentFolderName = stringResource(R.string.recently_installed)
     val recentFolder = remember(uiState.apps, recentFolderName) { uiState.recentlyInstalledFolder(recentFolderName) }
@@ -610,7 +612,7 @@ internal fun LauncherScreen(
     LaunchedEffect(searching, drawerOpen) { if (!searching && !drawerOpen) instantButtonEntrance = false }
     val isSettings = overlay == LauncherOverlay.Settings || overlay is LauncherOverlay.FolderSettings ||
         overlay is LauncherOverlay.SettingsDestination || overlay is LauncherOverlay.IconDesigner
-    val fullScreen = isSettings || overlay == LauncherOverlay.Search || overlay == LauncherOverlay.Favorites ||
+    val fullScreen = isSettings || overlay == LauncherOverlay.Search || overlay is LauncherOverlay.Favorites ||
         overlay is LauncherOverlay.IconDesigner || overlay is LauncherOverlay.EditPopup
     val privateAppEditing = when (val current = overlay) {
         is LauncherOverlay.AppDetails -> current.app.isPrivateSpace
@@ -1009,7 +1011,7 @@ internal fun LauncherScreen(
             selectedLetter = selectedLetter,
             topSpace = drawerTop,
             onLaunchApp = onLaunchApp,
-            onAppDetails = { overlay = LauncherOverlay.AppDetails(it) },
+            onAppDetails = { overlay = LauncherOverlay.AppDetails(it, fromAppList = true) },
             onAppShortcuts = openAppPopup,
             rowGestures = rowGestures,
             highlightedAppKey = highlightedAppKey,

@@ -100,6 +100,7 @@ data class LauncherUiState(
     val textMode: WallpaperTextMode = WallpaperTextMode.Auto,
     val themedIcons: Boolean = false,
     val settings: LauncherSettings = LauncherSettings(),
+    /** Manual hides only; list/search consumers must use effectiveHiddenAppKeys. */
     val hiddenAppKeys: Set<String> = emptySet(),
     val folders: List<LauncherFolder> = emptyList(),
     val isLoadingSettings: Boolean = false,
@@ -130,6 +131,9 @@ data class LauncherUiState(
     val workFolderApp: LauncherApp? = null,
     val shownShortcutKeys: Set<String> = emptySet(),
 ) {
+    val folderHiddenAppKeys: Set<String> = com.galaxyrio.gracelauncher.data.hiddenAppsFromFolders(folders)
+    val effectiveHiddenAppKeys: Set<String> = hiddenAppKeys + folderHiddenAppKeys
+
     fun findItem(key: String): LauncherApp? = apps.firstOrNull { it.key == key }
         ?: shortcutApps.firstOrNull { it.key == key && (!it.isPrivateSpace || privateContentVisible) }
             ?.let { if (it.isPrivateSpace) it.copy(showPrivateIndicator = settings.privateSpace.showIndicator) else it }
@@ -204,7 +208,7 @@ data class LauncherUiState(
     val appListApps: List<LauncherApp>
         get() = if (isLoadingSettings || settingsLoadFailed) emptyList()
         else (if (settings.privateSpace.display == PrivateSpaceDisplay.NormalApp) allApps else apps + publicPrivateShortcuts)
-            .filterNot { it.key in hiddenAppKeys }
+            .filterNot { it.key in effectiveHiddenAppKeys }
             .filterNot { it.isWorkProfile && it.shortcut == null && settings.workProfile.enabled &&
                 settings.workProfile.display != PrivateSpaceDisplay.NormalApp }
 
@@ -378,7 +382,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                         previous.settings.iconDesign != snapshot.settings.iconDesign ||
                         previous.settings.darkMode != snapshot.settings.darkMode ||
                         previous.settings.useDynamicColors != snapshot.settings.useDynamicColors ||
-                        previous.settings.themeColor != snapshot.settings.themeColor) refreshApps()
+                        previous.settings.themeColor != snapshot.settings.themeColor ||
+                        previous.settings.paletteStyle != snapshot.settings.paletteStyle) refreshApps()
                     if (previous.settings.privateSpace != snapshot.settings.privateSpace) refreshPrivateApps()
                     if (previous.isLoadingSettings || previous.settings.weatherEnabled != snapshot.settings.weatherEnabled ||
                         previous.settings.weatherLocationId != snapshot.settings.weatherLocationId
@@ -876,6 +881,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setHiddenApps(keys: Set<String>) {
         val snapshot = keys.toSet()
         persistSettings { settingsRepository.setHiddenApps(snapshot) }
+    }
+
+    fun hideApp(app: LauncherApp) = persistSettings { settingsRepository.hideApp(app.key) }
+
+    fun setFolderAutoHide(id: String, enabled: Boolean) = persistSettings {
+        settingsRepository.updateFolder(id, autoHideApps = enabled)
     }
 
     fun saveFolder(folder: LauncherFolder) {

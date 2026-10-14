@@ -49,7 +49,8 @@ internal fun IconDesignerPreview(
 ) {
     val rowDisplay = if (!all && selectedApp?.isGraceButton == true) IconDisplaySettings()
         else choice.display ?: uiState.settings.iconDisplay
-    val appearance = rememberLauncherAppearance(uiState.textMode, uiState.themedIcons, iconDisplay = rowDisplay)
+    val appearance = rememberLauncherAppearance(uiState.textMode, uiState.themedIcons,
+        iconSize = design.iconSize, iconDisplay = rowDisplay)
     val shape = ListItemDefaults.segmentedShapes(0, 1).shape
     Box(modifier.fillMaxWidth().testTag("icon_designer_preview").drawWithContent {
         // Match Clock style's window onto the real wallpaper, including live wallpapers.
@@ -69,20 +70,19 @@ internal fun IconDesignerPreview(
                     ) {
                         LauncherIcon(LauncherSymbol.Plus, Modifier.size(32.dp), MaterialTheme.colorScheme.onPrimaryContainer)
                     }
-                } else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                } else if (rowDisplay.style == IconDisplayStyle.Full) {
                     DesignerPreviewIcon(selectedApp, layers, design, dynamicColors, 160.dp * (design.iconSize / 100f),
                         Modifier.testTag("icon_designer_selected_app"), draggable = enabled, onChange = onChange, themeColors = themeColors)
-                    // How the app reads on a launcher row under the resolved display style.
-                    Row(Modifier.align(Alignment.BottomCenter).testTag("icon_designer_display_result")
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), MaterialTheme.shapes.medium)
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                } else {
+                    Row(Modifier.testTag("icon_designer_display_result").padding(horizontal = 20.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         if (rowDisplay.style != IconDisplayStyle.Hidden) {
-                            DesignerDisplayedIcon(selectedApp, layers, design, dynamicColors, themeColors, 28.dp, rowDisplay)
-                            Spacer(Modifier.width(10.dp))
+                            DesignerDisplayedIcon(selectedApp, layers, design, dynamicColors, themeColors,
+                                40.dp * (design.iconSize / 100f), rowDisplay)
+                            Spacer(Modifier.width(LauncherLayout.IconLabelGap))
                         }
-                        Text(selectedApp.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelLarge)
+                        Text(selectedApp.label, maxLines = 1, overflow = TextOverflow.Ellipsis, color = appearance.text,
+                            style = MaterialTheme.typography.bodyLarge.merge(TextStyle(shadow = appearance.textShadow)))
                     }
                 }
             }

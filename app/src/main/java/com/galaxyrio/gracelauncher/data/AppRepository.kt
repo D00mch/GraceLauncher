@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import com.galaxyrio.gracelauncher.SettingsActivity
 import com.galaxyrio.gracelauncher.data.icons.IconPackRepository
+import com.galaxyrio.gracelauncher.data.icons.IconDominantColor
+import com.galaxyrio.gracelauncher.data.icons.renderIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.currentCoroutineContext
@@ -120,6 +122,12 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
 
     private fun makeApp(component: ComponentName, label: String, drawable: Drawable?,
         packs: List<com.galaxyrio.gracelauncher.data.icons.LoadedIconPack>, flags: Int): LauncherApp {
+        // Sample the provider's original drawable on IO, before considering packs.
+        // Only the color survives; previews/drags never reload or resample icons.
+        val originalColor = runCatching { drawable?.let {
+            val sample = renderIcon(it, 48)
+            try { IconDominantColor.of(sample) } finally { sample.recycle() }
+        } }.getOrNull()
         // Generic masks/backgrounds do not intercept the remaining packs or the system fallback.
         val match = firstMatchingPackIcon(packs) { it.iconFor(component, null) }
         val packed = match?.second
@@ -136,7 +144,7 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
         return LauncherApp(componentName = component, label = label, icon = icon, monochromeIcon = monochrome,
             iconPackPackage = match?.first?.packageName, monochromeScale = packed?.monochromeScale ?: 1.4f,
             isSystemApp = flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0,
-            isAdaptiveIcon = drawable is AdaptiveIconDrawable)
+            isAdaptiveIcon = drawable is AdaptiveIconDrawable, originalIconColor = originalColor)
     }
 
     fun launch(

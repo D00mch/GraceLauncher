@@ -26,10 +26,13 @@ class ListAppearanceColorTest {
     @Test fun overlayColorRoundTripsIndependentlyAndOldSettingsKeepAutomaticTint() {
         assertNull(ListAppearance.decode(null).wallpaperDimColor)
         assertNull(ListAppearance.decode("""{"fontSize":20,"fontColor":{"argb":-1}}""").wallpaperDimColor)
-        listOf(null, IconColor(0xFF274B62.toInt()), IconColor.Theme, IconColor(0, dynamic = true)).forEach { color ->
+        listOf(null, IconColor(0xFF274B62.toInt()), IconColor.Theme).forEach { color ->
             val original = ListAppearance(fontColor = IconColor(-1), fontSize = 20, wallpaperDimColor = color)
             assertEquals(original, ListAppearance.decode(original.encode()))
         }
+        val legacy = ListAppearance.decode("""{"fontColor":{"argb":-1,"dynamic":true},"wallpaperDimColor":{"argb":-1,"dynamic":true}}""")
+        assertEquals(IconColor.Theme, legacy.fontColor)
+        assertEquals(IconColor.Theme, legacy.wallpaperDimColor)
     }
 
     @Test fun dimSwitchRevealsSliderAndColorWhilePreservingTheChoiceWhenDisabled() {
@@ -42,6 +45,8 @@ class ListAppearanceColorTest {
         compose.onNodeWithTag("settings_dim_wallpaper_amount").assertExists()
         compose.onNodeWithTag("settings_dim_wallpaper_color").performClick()
         compose.onNodeWithTag("list_appearance_preview").assertIsDisplayed()
+        compose.onNodeWithTag("icon_designer_color_source:FromApp", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_color_source:Fixed", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("icon_designer_hex").performTextReplacement("274B62")
         compose.onNodeWithTag("icon_designer_color_close").performClick()
         // The source row is still in view after the hero returns to the list.
@@ -63,6 +68,8 @@ class ListAppearanceColorTest {
         scrollTo("list_font_color")
         compose.onNodeWithTag("list_font_color").performClick()
         compose.onNodeWithTag("list_appearance_preview").assertIsDisplayed()
+        compose.onNodeWithTag("icon_designer_color_source:FromApp", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_color_source:Fixed", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("icon_designer_hex").performTextReplacement("FFCC00")
         compose.onNodeWithTag("settings_back").performClick()
         compose.onNodeWithTag("list_font_color").assertIsDisplayed()

@@ -4,17 +4,33 @@ import org.json.JSONObject
 
 enum class IconShape { None, Circle, Pebble, Square, Gem, Cookie }
 
-/** Dynamic colors remain dynamic after saving, including wallpaper changes. */
-data class IconColor(val argb: Int, val dynamic: Boolean = false, val theme: Boolean = false) {
-    internal fun json() = JSONObject().put("argb", argb).put("dynamic", dynamic).put("theme", theme)
-    fun resolve(dynamicColor: Int, themeColor: Int): Int = when {
+enum class IconColorSource { Theme, FromApp, Fixed }
+
+/** Store a source, not a snapshot, for theme and original-app colors. */
+data class IconColor(val argb: Int, val theme: Boolean = false, val fromApp: Boolean = false) {
+    val source: IconColorSource get() = when {
+        theme -> IconColorSource.Theme
+        fromApp -> IconColorSource.FromApp
+        else -> IconColorSource.Fixed
+    }
+    internal fun json() = JSONObject().put("argb", argb).put("theme", theme).put("fromApp", fromApp)
+    fun resolve(themeColor: Int, appColor: Int? = null): Int = when {
         theme -> themeColor
-        dynamic -> dynamicColor
+        fromApp -> appColor ?: themeColor
         else -> argb
     }
     companion object {
         val Theme = IconColor(0, theme = true)
-        internal fun decode(value: JSONObject?) = value?.let { IconColor(it.optInt("argb"), it.optBoolean("dynamic"), it.optBoolean("theme")) }
+        val FromApp = IconColor(0, fromApp = true)
+        internal fun fromStored(argb: Int, theme: Boolean = false, dynamic: Boolean = false, fromApp: Boolean = false) = when {
+            // Retire the old dynamic preset without requiring a database migration.
+            theme || dynamic -> Theme
+            fromApp -> FromApp
+            else -> IconColor(argb)
+        }
+        internal fun decode(value: JSONObject?) = value?.let {
+            fromStored(it.optInt("argb"), it.optBoolean("theme"), it.optBoolean("dynamic"), it.optBoolean("fromApp"))
+        }
     }
 }
 

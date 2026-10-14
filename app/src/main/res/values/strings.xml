@@ -360,6 +360,10 @@
     <string name="icon_display_shared">shared setting</string>
     <string name="icon_display_shared_caption">Using shared setting</string>
     <string name="icon_dot_color">Dot color</string>
+    <string name="icon_color_source_theme">Theme</string>
+    <string name="icon_color_source_app">From app</string>
+    <string name="icon_color_source_fixed">Fixed</string>
+    <string name="icon_color_from_app_summary">Uses each app’s original icon, without icon packs. Falls back to the theme when no suitable color is found.</string>
     <string name="icon_dot_color_artwork">From the app icon</string>
     <string name="icon_dot_color_theme">Theme color</string>
     <string name="icon_dot_color_custom">Custom</string>
@@ -656,4 +660,18 @@
     <string name="alphabet_free_movement">Free movement</string>
     <string name="alphabet_free_movement_summary">Drag beyond either end to move the alphabet. Release to return.</string>
     <string name="alphabet_automatic_spacing">Automatic · %1$d dp spacing</string>
+    <string name="settings_palette_style">Palette style</string>
+    <string name="palette_tonal_spot">Tonal spot</string>
+    <string name="palette_neutral">Neutral</string>
+    <string name="palette_vibrant">Vibrant</string>
+    <string name="palette_expressive">Expressive</string>
+    <string name="palette_rainbow">Rainbow</string>
+    <string name="palette_fruit_salad">Fruit salad</string>
+    <string name="palette_monochrome">Monochrome</string>
+    <string name="palette_fidelity">Fidelity</string>
+    <string name="palette_content">Content</string>
+    <string name="hide_app">Hide app</string>
+    <string name="settings_folder_auto_hide">Automatically hide apps inside</string>
+    <string name="settings_folder_auto_hide_summary">Hide current and future members from the app list. Manual hides are kept when apps leave this folder.</string>
+    <string name="hidden_from_folder">Hidden by folder</string>
 </resources>

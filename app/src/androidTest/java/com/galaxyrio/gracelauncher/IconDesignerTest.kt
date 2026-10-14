@@ -102,6 +102,19 @@ class IconDesignerTest {
         compose.onNodeWithTag("icon_designer_app:${apps[index].key}").performClick()
     }
 
+    @Test fun singlePreviewOnlyShowsTheArtworkForFullAndTheCenteredRowForDotOrHidden() {
+        show(); chooseApp()
+        compose.onNodeWithTag("icon_designer_selected_app").assertIsDisplayed()
+        compose.onNodeWithTag("icon_designer_display_result").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_display:Dot", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("icon_designer_selected_app").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_display_result").assertIsDisplayed()
+        compose.onNodeWithTag("icon_designer_display:Hidden", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("icon_designer_selected_app").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_display_result").assertIsDisplayed()
+        compose.onNodeWithText("App 4").assertIsDisplayed()
+    }
+
     @Test fun displayModeIsFirstAndOnlyItsOwnControlsRemain() {
         show()
         val displayBounds = compose.onNodeWithTag("icon_designer_display").fetchSemanticsNode().boundsInRoot
@@ -143,7 +156,7 @@ class IconDesignerTest {
         val preview = compose.onNodeWithTag("icon_designer_preview").fetchSemanticsNode().boundsInRoot
         val picker = compose.onNodeWithTag("icon_designer_color_picker").fetchSemanticsNode().boundsInRoot
         assertTrue(preview.bottom <= picker.top)
-        compose.onNodeWithTag("icon_designer_dynamic_color").performScrollTo().performClick()
+        compose.onNodeWithTag("icon_designer_color_source:FromApp", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("icon_designer_color_done").performScrollTo().performClick()
         compose.onNodeWithTag("icon_designer_x").performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(20f) }
         compose.onNodeWithTag("icon_designer_size").performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(150f) }
@@ -157,7 +170,7 @@ class IconDesignerTest {
             assertEquals(9, specialSaved?.design?.cookieSides)
             assertEquals(20f, specialSaved?.design?.x)
             assertEquals(100, specialSaved?.design?.size)
-            assertEquals(true, specialSaved?.design?.foreground?.dynamic)
+            assertEquals(IconColor.FromApp, specialSaved?.design?.foreground)
             assertNull(bulkSaved)
         }
     }
@@ -200,11 +213,12 @@ class IconDesignerTest {
         compose.onNodeWithTag("icon_designer_source").performScrollTo().performClick()
         compose.onNodeWithTag("icon_designer_source_system").performClick()
         compose.onNodeWithTag("icon_designer_background").performScrollTo().performClick()
+        compose.onNodeWithTag("icon_designer_color_source:Fixed", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("icon_designer_hex").performScrollTo().performTextReplacement("ED5234")
         androidx.test.espresso.Espresso.closeSoftKeyboard()
         compose.onNodeWithTag("icon_designer_color_done").performScrollTo().performClick()
         compose.onNodeWithTag("icon_designer_foreground").performScrollTo().performClick()
-        compose.onNodeWithTag("icon_designer_dynamic_color").performScrollTo().performClick()
+        compose.onNodeWithTag("icon_designer_color_source:FromApp", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("icon_designer_color_reset").performScrollTo().performClick()
         compose.onNodeWithTag("icon_designer_x").performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(30f) }
         compose.onNodeWithTag("icon_designer_x_reset").performClick()
@@ -236,14 +250,15 @@ class IconDesignerTest {
         compose.onNodeWithTag("icon_designer_controls")
             .performScrollToNode(hasTestTag("icon_designer_display"))
         compose.onNodeWithTag("icon_designer_display:Dot", useUnmergedTree = true).assertIsSelected()
-        compose.onNodeWithTag("icon_designer_dot_colors").performScrollTo()
-        compose.onNodeWithTag("icon_designer_dot_color:Custom", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("icon_designer_dot_color").performScrollTo().performClick()
+        compose.onNodeWithTag("icon_designer_color_source:Fixed", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("icon_designer_color_close").performClick()
         compose.onNodeWithTag("icon_designer_display").performScrollTo()
         compose.onNodeWithTag("icon_designer_display_reset", useUnmergedTree = true).assertIsEnabled()
         // Resetting clears the override back to the shared dots, without writing.
         compose.onNodeWithTag("icon_designer_display_reset", useUnmergedTree = true).performClick()
-        compose.onNodeWithTag("icon_designer_dot_colors").performScrollTo()
-        compose.onNodeWithTag("icon_designer_dot_color:Artwork", useUnmergedTree = true).assertIsSelected()
+        compose.onNodeWithTag("icon_designer_dot_color").performScrollTo().performClick()
+        compose.onNodeWithTag("icon_designer_color_source:FromApp", useUnmergedTree = true).assertIsSelected()
     }
 
 }

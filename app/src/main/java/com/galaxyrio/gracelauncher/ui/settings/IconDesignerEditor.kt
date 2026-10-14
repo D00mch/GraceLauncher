@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -280,6 +281,8 @@ internal fun IconDesignerSettings(
                             onCloseColor = { colorPicker = null }, onChange = ::changeDesign,
                             onDisplay = { change(shownChoice.copy(display = it)) },
                             showSuggestions = !isAll && button,
+                            allowFromApp = isAll || (app != null && app.folderId == null && !button),
+                            appColor = if (isAll) uiState.allApps.firstOrNull { it.folderId == null }?.originalIconColor else app?.originalIconColor,
                             onPositionAndSize = onPositionAndSize?.let { { request("position") } },
                             onSuggestion = { change(ItemIcon("symbol", name = it, design = design, display = shownChoice.display)) }, modifier = Modifier.weight(1f))
                     }
@@ -316,6 +319,7 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
     inheritedDisplay: IconDisplaySettings,
     onSwitch: () -> Unit, onSource: () -> Unit, onColor: (String) -> Unit, onCloseColor: () -> Unit,
     onChange: (IconDesign) -> Unit, onDisplay: (IconDisplaySettings?) -> Unit, showSuggestions: Boolean,
+    allowFromApp: Boolean, appColor: Int?,
     onSuggestion: (String) -> Unit, onPositionAndSize: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     val design = choice.design ?: IconDesign()
     val heroSpec = MaterialTheme.motionScheme.slowSpatialSpec<Rect>()
@@ -332,6 +336,7 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
                 iconDesignerControls(all, enabled, appLabel, sourceLabel, design, layered, dynamicColors, themeColors, defaults,
                     onSwitch, onSource, onColor, onChange,
                     display = choice.display, inheritedDisplay = inheritedDisplay, onDisplay = onDisplay,
+                    appColor = appColor, allowFromApp = allowFromApp,
                     showSuggestions = showSuggestions, suggestion = when (choice.kind) {
                         "symbol" -> choice.name
                         "system", "theme" -> GraceButtonIcon.Suggestion.Default.id
@@ -341,21 +346,22 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
                         boundsTransform = heroBounds, clipInOverlayDuringTransition = OverlayClip(shape)) })
             } else if (activeColor == "dot") {
                 val display = choice.display ?: inheritedDisplay
-                IconDesignerColorPicker(stringResource(R.string.icon_dot_color), display.customColor,
-                    dynamicColors.first, themeColors.first, IconColor.Theme,
-                    onChange = { value -> if (enabled) onDisplay(display.copy(customColor = value ?: IconColor.Theme)) },
+                IconDesignerColorPicker(stringResource(R.string.icon_dot_color), display.color,
+                    MaterialTheme.colorScheme.primary.toArgb(), (if (all) IconDisplaySettings() else inheritedDisplay).color,
+                    onChange = { value -> if (enabled) onDisplay(display.withColor(value ?: IconColor.Theme)) },
                     onClose = onCloseColor,
+                    allowFromApp = allowFromApp, appColor = appColor,
                     modifier = Modifier.sharedBounds(rememberSharedContentState("color:dot"), visibility,
                         boundsTransform = heroBounds, clipInOverlayDuringTransition = OverlayClip(shape)))
             } else {
                 val background = activeColor != "foreground"
                 val title = stringResource(if (background) R.string.icon_designer_tray_color else R.string.icon_designer_symbol_color)
                 IconDesignerColorPicker(title, if (background) design.background else design.foreground,
-                    if (background) dynamicColors.first else dynamicColors.second,
                     if (background) themeColors.first else themeColors.second,
                     if (background) defaults.background else defaults.foreground,
                     onChange = { value -> if (enabled) onChange(if (background) design.copy(background = value)
                         else design.copy(foreground = value)) }, onClose = onCloseColor,
+                    allowFromApp = allowFromApp, appColor = appColor,
                     modifier = Modifier.sharedBounds(rememberSharedContentState("color:$activeColor"), visibility,
                         boundsTransform = heroBounds, clipInOverlayDuringTransition = OverlayClip(shape)))
             }

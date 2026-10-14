@@ -35,10 +35,10 @@ data class LauncherApp(
     val isLauncherSettings: Boolean = false,
     val isWorkProfile: Boolean = false,
     val showWorkIndicator: Boolean = true,
-    /** Sampled dominant artwork color for Dot display; null until extracted or when neutral. */
-    val iconColor: Int? = null,
     /** Per-item icon-display override saved in the designer; null follows the shared setting. */
     val iconDisplay: IconDisplaySettings? = null,
+    /** Dominant color of the original app icon, before any pack/design. Null means neutral/unavailable. */
+    val originalIconColor: Int? = null,
 ) {
     val key: String = folderId?.let { "folder:$it" } ?: shortcut?.key
         ?: userSerial?.let { "profile:$it:${componentName.flattenToString()}" } ?: componentName.flattenToString()

@@ -27,11 +27,11 @@ class WallpaperTintTest {
         }
     }
 
-    @Test fun themeAndAutomaticChoicesContinueFollowingThePalette() {
+    @Test fun themeAndRetiredDynamicChoicesFollowTheThemePalette() {
         listOf(primary, Color(0xFFAA5500)).forEach { seed ->
             val appearance = LauncherAppearance()
             assertEquals(seed, appearance.wallpaperTint(seed, IconColor.Theme))
-            assertEquals(appearance.wallpaperTint(seed), appearance.wallpaperTint(seed, IconColor(0, dynamic = true)))
+            assertEquals(seed, appearance.wallpaperTint(seed, IconColor.fromStored(0, dynamic = true)))
         }
     }
 }

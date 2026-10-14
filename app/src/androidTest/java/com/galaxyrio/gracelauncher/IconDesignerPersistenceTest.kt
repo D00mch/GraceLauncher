@@ -25,7 +25,7 @@ class IconDesignerPersistenceTest {
                 LauncherDatabase.Migration14To15, LauncherDatabase.Migration15To16,
                 LauncherDatabase.Migration16To17, LauncherDatabase.Migration17To18,
                 LauncherDatabase.Migration18To19, LauncherDatabase.Migration19To20,
-                LauncherDatabase.Migration20To21).build().also { database = it }
+                LauncherDatabase.Migration20To21, LauncherDatabase.Migration21To22).build().also { database = it }
     }
 
     @After fun close() { database?.close(); context.deleteDatabase(databaseName) }
@@ -67,7 +67,7 @@ class IconDesignerPersistenceTest {
         assertTrue(withTimeout(10_000) { LauncherSettingsRepository(db).snapshots.first().settings.enabledIconPackPackages }.isEmpty())
         assertEquals(override, withTimeout(10_000) { LauncherItemsRepository(db).snapshots.first().icons[appKey] })
         val bulk = ItemIcon.Theme.copy(design = IconDesign(shape = IconShape.Gem, size = 125,
-            background = IconColor(0xFF6750A4.toInt(), true), x = 15f))
+            background = IconColor.FromApp, foreground = IconColor.Theme, x = 15f))
         val special = override.copy(design = IconDesign(shape = IconShape.Cookie, cookieSides = 12, y = -10f))
         LauncherSettingsRepository(db).mutateSettings { it.copy(iconDesign = bulk) }
         LauncherItemsRepository(db).saveIcon(appKey, special)

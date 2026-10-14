@@ -32,9 +32,7 @@ import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.WallpaperTextMode
 import com.galaxyrio.gracelauncher.data.IconColor
-import com.materialkolor.PaletteStyle
-import com.materialkolor.ktx.toDynamicScheme
-import com.materialkolor.ktx.toneColor
+import com.materialkolor.palettes.TonalPalette
 import java.util.function.Consumer
 
 data class LauncherAppearance(val darkText: Boolean = false, val themedIcons: Boolean = false, val iconSize: Int = 100,
@@ -48,9 +46,10 @@ val LocalLauncherAppearance = staticCompositionLocalOf { LauncherAppearance() }
 /** The settings preview, app list and search resolve the same saved overlay color. */
 internal fun LauncherAppearance.wallpaperTint(primary: Color, choice: IconColor? = null): Color {
     // Adjust primary's tone, not a black scrim. Dark text gets a matching light tint.
-    val automatic = primary.toDynamicScheme(isDark = !darkText, style = PaletteStyle.TonalSpot)
-        .primaryPalette.toneColor(if (darkText) 95 else 10)
-    return choice?.resolve(automatic.toArgb(), primary.toArgb())?.let(::Color) ?: automatic
+    // Change tone within the already selected theme palette; do not generate a
+    // second Tonal Spot scheme that discards the user's chosen style/chroma.
+    val automatic = Color(TonalPalette.fromInt(primary.toArgb()).tone(if (darkText) 95 else 10))
+    return choice?.resolve(primary.toArgb())?.let(::Color) ?: automatic
 }
 
 /** One resolver for every row: a per-app override wins, else the shared setting. */

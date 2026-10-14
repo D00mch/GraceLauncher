@@ -23,8 +23,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -40,7 +38,6 @@ import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.IconDesign
 import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.IconDisplayStyle
-import com.galaxyrio.gracelauncher.data.IconDotColor
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.icons.IconDominantColor
@@ -48,12 +45,10 @@ import com.galaxyrio.gracelauncher.data.icons.IconLayers
 import com.galaxyrio.gracelauncher.data.icons.ItemIconStore
 import com.galaxyrio.gracelauncher.data.icons.iconLayers
 import com.galaxyrio.gracelauncher.data.icons.drawDesignedIcon
-import com.galaxyrio.gracelauncher.data.icons.renderDesignedIcon
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.AppIcon
 import com.galaxyrio.gracelauncher.ui.components.IconBadge
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.galaxyrio.gracelauncher.ui.theme.LocalLauncherAppearance
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -134,7 +129,7 @@ internal fun DesignerPreviewIcon(app: LauncherApp, layers: IconLayers?, design: 
                 val checkpoint = canvas.save()
                 canvas.scale(this.size.width / layers.original.width, this.size.height / layers.original.height)
                 drawDesignedIcon(canvas, layers, gestureDraft ?: design, dynamicColors.first, dynamicColors.second,
-                    themeColors.first, themeColors.second)
+                    themeColors.first, themeColors.second, app.originalIconColor)
                 canvas.restoreToCount(checkpoint)
             }
         } else AppIcon(app, size = size, applyDisplaySize = false)
@@ -161,21 +156,12 @@ internal fun DesignerDisplayedIcon(app: LauncherApp, layers: IconLayers?, design
         AppIcon(app, modifier, size = size, applyDisplaySize = false, display = display)
         return
     }
-    val bitmap by produceState<ImageBitmap?>(null, layers, design, dynamicColors, themeColors) {
-        value = layers?.let { withContext(Dispatchers.Default) { renderDesignedIcon(it, design,
-            dynamicColors.first, dynamicColors.second, themeColors.first, themeColors.second).asImageBitmap() } }
-    }
-    val artwork = bitmap ?: app.icon
-    val iconColor = remember(artwork, display.style, display.dotColor, display.customColor, dynamicColors, themeColors) {
-        if (display.style == IconDisplayStyle.Dot) when (display.dotColor) {
-            IconDotColor.Artwork -> artwork?.asAndroidBitmap()?.let(IconDominantColor::of)
-            IconDotColor.Custom -> display.customColor?.resolve(dynamicColors.first, themeColors.first)
-            IconDotColor.Theme -> null
-        } else null
-    }
-    AppIcon(remember(app, artwork, iconColor) {
-        app.copy(icon = artwork, iconColor = iconColor)
-    }, modifier, size = size, applyDisplaySize = false, display = display)
+    // Dot rendering reads the same original-app sample as the actual launcher.
+    // It never needs a designed bitmap or resampling when size/shape changes.
+    // The caller already scales the row slot. Let AppIcon apply that same scale to
+    // both its slot and dot so this preview matches the actual launcher row.
+    val scale = LocalLauncherAppearance.current.iconSize / 100f
+    AppIcon(app, modifier, size = size / scale, display = display)
 }
 
 private fun Offset.rotated(degrees: Float): Offset {
@@ -237,7 +223,8 @@ private fun rememberDesignerSampleLayers(row: Int, dynamicColors: Pair<Int, Int>
 
 @Composable
 private fun rememberDesignerSampleApp(row: Int, original: IconLayers): LauncherApp =
-    remember(original, row) { LauncherApp(ComponentName("designer.sample$row", "Preview"), "", original.original.asImageBitmap()) }
+    remember(original, row) { LauncherApp(ComponentName("designer.sample$row", "Preview"), "", original.original.asImageBitmap(),
+        originalIconColor = IconDominantColor.of(original.original)) }
 
 @Composable
 internal fun DesignerSamplePreviewIcon(row: Int, choice: ItemIcon,

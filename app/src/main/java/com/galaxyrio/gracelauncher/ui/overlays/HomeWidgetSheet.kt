@@ -43,7 +43,7 @@ internal fun HomeWidgetSheet(uiState: LauncherUiState, actions: LauncherActions,
                 fontSize = 25.sp, fontWeight = FontWeight.Medium)
         }
         if (custom) {
-            WidgetAction(LauncherSymbol.Star, stringResource(R.string.edit_favorites)) { onChange(LauncherOverlay.Favorites) }
+            WidgetAction(LauncherSymbol.Star, stringResource(R.string.edit_favorites)) { onChange(LauncherOverlay.Favorites()) }
             if (app != null) WidgetAction(LauncherSymbol.Info, stringResource(R.string.app_info)) { onChange(null); actions.appInfo(app) }
             WidgetAction(LauncherSymbol.Resize, stringResource(R.string.widget_move_resize)) { actions.moveWidget() }
             WidgetAction(LauncherSymbol.Edit, stringResource(R.string.widget_configuration)) { onChange(null); actions.configureWidget() }
@@ -66,7 +66,7 @@ internal fun HomeWidgetSheet(uiState: LauncherUiState, actions: LauncherActions,
         }
         HorizontalDivider(Modifier.padding(horizontal = 12.dp).padding(top = 6.dp, bottom = 8.dp),
             thickness = 1.dp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-        if (!custom) WidgetAction(LauncherSymbol.Star, stringResource(R.string.edit_favorites), arrow = true) { onChange(LauncherOverlay.Favorites) }
+        if (!custom) WidgetAction(LauncherSymbol.Star, stringResource(R.string.edit_favorites), arrow = true) { onChange(LauncherOverlay.Favorites()) }
         WidgetAction(LauncherSymbol.Settings, stringResource(R.string.grace_settings), arrow = !custom) { onChange(LauncherOverlay.Settings) }
     }
 }

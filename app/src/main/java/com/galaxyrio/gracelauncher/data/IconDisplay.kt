@@ -12,7 +12,7 @@ data class IconDisplaySettings(
     val dotColor: IconDotColor = IconDotColor.Artwork,
     /** Dot diameter in dp before the icon-size percentage is applied. */
     val dotSize: Int = 10,
-    /** Custom dot color; supports the designer's fixed/dynamic/theme color types. */
+    /** Legacy storage fields are retained; the UI uses the shared color source. */
     val customColor: IconColor? = null,
     // Kept separate from IconDesign so switching modes never changes the full icon.
     val dotShape: IconShape = IconShape.Circle,
@@ -20,6 +20,18 @@ data class IconDisplaySettings(
     val dotPebbleRoundness: Int = IconDesign.DefaultPebbleRoundness,
     val dotSquareCornerRadius: Int = 0,
 ) {
+    val color: IconColor get() = when (dotColor) {
+        IconDotColor.Artwork -> IconColor.FromApp
+        IconDotColor.Theme -> IconColor.Theme
+        IconDotColor.Custom -> customColor ?: IconColor.Theme
+    }
+
+    fun withColor(value: IconColor): IconDisplaySettings = when (value.source) {
+        IconColorSource.Theme -> copy(dotColor = IconDotColor.Theme, customColor = null)
+        IconColorSource.FromApp -> copy(dotColor = IconDotColor.Artwork, customColor = null)
+        IconColorSource.Fixed -> copy(dotColor = IconDotColor.Custom, customColor = value)
+    }
+
     val dotDesign: IconDesign get() = IconDesign(shape = dotShape, cookieSides = dotCookieSides,
         pebbleRoundness = dotPebbleRoundness, squareCornerRadius = dotSquareCornerRadius)
 

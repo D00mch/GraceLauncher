@@ -62,7 +62,17 @@ internal fun ProfileEditorScreen(owner: LauncherApp, uiState: LauncherUiState, a
 }
 
 @Composable
-internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions, onToggle: (LauncherApp) -> Unit, onReorder: (List<String>) -> Unit, onDone: () -> Unit) {
+internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions, onToggle: (LauncherApp) -> Unit, onReorder: (List<String>) -> Unit,
+    initialAppKey: String? = null, onDone: () -> Unit) {
+    var initialSelectionApplied by rememberSaveable(initialAppKey) { mutableStateOf(false) }
+    LaunchedEffect(initialAppKey, uiState.isLoadingApps, uiState.isLoadingSettings, uiState.settingsLoadFailed) {
+        if (!initialSelectionApplied && initialAppKey != null && !uiState.isLoadingApps &&
+            !uiState.isLoadingSettings && !uiState.settingsLoadFailed) {
+            val app = uiState.findItem(initialAppKey) ?: return@LaunchedEffect
+            initialSelectionApplied = true
+            if (initialAppKey !in uiState.favoriteKeys) onToggle(app)
+        }
+    }
     var choosingShortcut by rememberSaveable { mutableStateOf(false) }
     var choosingFolders by rememberSaveable { mutableStateOf(false) }
     if (choosingFolders) {

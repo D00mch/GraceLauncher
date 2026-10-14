@@ -44,7 +44,8 @@ import com.galaxyrio.gracelauncher.data.IconColor
 import com.galaxyrio.gracelauncher.data.IconDesign
 import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.IconDisplayStyle
-import com.galaxyrio.gracelauncher.data.IconDotColor
+import com.galaxyrio.gracelauncher.data.IconColorSource
+import androidx.compose.ui.graphics.toArgb
 import com.galaxyrio.gracelauncher.data.IconShape
 import com.galaxyrio.gracelauncher.data.icons.iconShapePath
 import com.galaxyrio.gracelauncher.data.icons.GraceButtonIcon
@@ -58,6 +59,7 @@ internal fun LazyListScope.iconDesignerControls(
     display: IconDisplaySettings? = null, inheritedDisplay: IconDisplaySettings = IconDisplaySettings(),
     onDisplay: (IconDisplaySettings?) -> Unit = {},
     showSuggestions: Boolean = false, suggestion: String? = null, onSuggestion: (String) -> Unit = {},
+    appColor: Int? = null, allowFromApp: Boolean = true,
     onPositionAndSize: (() -> Unit)? = null,
     colorModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
@@ -120,14 +122,10 @@ internal fun LazyListScope.iconDesignerControls(
         }
         item("dot_color") {
             DesignerSegment(3, count, "icon_designer_dot_colors") {
-                Text(stringResource(R.string.icon_dot_color))
-                DesignerConnectedChoices(IconDotColor.entries, effective.dotColor, enabled,
-                    "icon_designer_dot_color", { it.label() }) { onDisplay(effective.copy(dotColor = it)) }
-                if (effective.dotColor == IconDotColor.Custom) {
-                    DesignerColorRow(stringResource(R.string.icon_designer_custom_color), effective.customColor, IconColor.Theme,
-                        dynamicColors.first, themeColors.first, enabled, "icon_designer_dot_color",
-                        colorModifier("dot"), { onColor("dot") }) { onDisplay(effective.copy(customColor = IconColor.Theme)) }
-                }
+                val default = (if (all) IconDisplaySettings() else inheritedDisplay).color
+                DesignerColorRow(stringResource(R.string.icon_dot_color), effective.color, default,
+                    MaterialTheme.colorScheme.primary.toArgb(), appColor, allowFromApp, enabled, "icon_designer_dot_color",
+                    colorModifier("dot"), { onColor("dot") }) { onDisplay(effective.withColor(default)) }
             }
         }
         return
@@ -229,10 +227,10 @@ internal fun LazyListScope.iconDesignerControls(
         DesignerSegment(colorIndex, count, "icon_designer_colors") {
             Text(stringResource(R.string.icon_designer_color))
             if (all || layered || design.addTray) DesignerColorRow(stringResource(R.string.icon_designer_tray_color), design.background,
-                defaults.background, dynamicColors.first, themeColors.first, enabled, "icon_designer_background",
+                defaults.background, themeColors.first, appColor, allowFromApp, enabled, "icon_designer_background",
                 colorModifier("background"), { onColor("background") }) { onChange(design.copy(background = defaults.background)) }
             DesignerColorRow(stringResource(R.string.icon_designer_symbol_color), design.foreground,
-                defaults.foreground, dynamicColors.second, themeColors.second, enabled, "icon_designer_foreground",
+                defaults.foreground, themeColors.second, appColor, allowFromApp, enabled, "icon_designer_foreground",
                 colorModifier("foreground"), { onColor("foreground") }) { onChange(design.copy(foreground = defaults.foreground)) }
         }
     }
@@ -354,13 +352,13 @@ internal fun DesignerSlider(label: String, value: Float, default: Float, range: 
 }
 
 @Composable
-private fun DesignerColorRow(label: String, choice: IconColor?, default: IconColor?, dynamic: Int, theme: Int, enabled: Boolean, tag: String,
+private fun DesignerColorRow(label: String, choice: IconColor?, default: IconColor?, theme: Int, appColor: Int?, allowFromApp: Boolean, enabled: Boolean, tag: String,
     modifier: Modifier, onPick: () -> Unit, onReset: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f).then(modifier).heightIn(min = 64.dp).clip(MaterialTheme.shapes.medium)
             .clickable(enabled = enabled, role = Role.Button, onClick = onPick).testTag(tag).padding(horizontal = 4.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            val swatch = choice?.let { Color(it.resolve(dynamic, theme)) } ?: MaterialTheme.colorScheme.surfaceContainerHighest
+            val swatch = choice?.let { Color(it.resolve(theme, appColor)) } ?: MaterialTheme.colorScheme.surfaceContainerHighest
             val outline = MaterialTheme.colorScheme.outline
             Canvas(Modifier.size(28.dp)) {
                 val radius = size.minDimension / 2 - 1.dp.toPx()
@@ -372,9 +370,8 @@ private fun DesignerColorRow(label: String, choice: IconColor?, default: IconCol
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(label)
-                Text(stringResource(if (choice == null) R.string.icon_designer_original_color else if (choice.theme)
-                    R.string.icon_designer_theme_color else if (choice.dynamic)
-                    R.string.settings_dynamic_colors else R.string.icon_designer_custom_color), style = MaterialTheme.typography.labelSmall)
+                val source = if (!allowFromApp && choice?.fromApp == true) IconColorSource.Theme else choice?.source
+                Text(source?.label() ?: stringResource(R.string.icon_designer_original_color), style = MaterialTheme.typography.labelSmall)
             }
         }
         ResetIconButton(label, enabled && choice != default, "${tag}_reset", onReset)
@@ -382,7 +379,7 @@ private fun DesignerColorRow(label: String, choice: IconColor?, default: IconCol
 }
 
 @Composable
-private fun <T : Enum<T>> DesignerConnectedChoices(options: List<T>, selected: T, enabled: Boolean, tag: String,
+internal fun <T : Enum<T>> DesignerConnectedChoices(options: List<T>, selected: T, enabled: Boolean, tag: String,
     label: @Composable (T) -> String, onSelect: (T) -> Unit) {
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).selectableGroup().padding(top = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
@@ -409,10 +406,10 @@ internal fun IconDisplayStyle.label(): String = stringResource(when (this) {
 })
 
 @Composable
-internal fun IconDotColor.label(): String = stringResource(when (this) {
-    IconDotColor.Artwork -> R.string.icon_dot_color_artwork
-    IconDotColor.Theme -> R.string.icon_dot_color_theme
-    IconDotColor.Custom -> R.string.icon_dot_color_custom
+internal fun IconColorSource.label(): String = stringResource(when (this) {
+    IconColorSource.Theme -> R.string.icon_color_source_theme
+    IconColorSource.FromApp -> R.string.icon_color_source_app
+    IconColorSource.Fixed -> R.string.icon_color_source_fixed
 })
 
 @Composable

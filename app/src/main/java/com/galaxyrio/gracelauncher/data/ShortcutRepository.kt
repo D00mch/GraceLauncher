@@ -37,7 +37,8 @@ data class LauncherShortcut(
         return LauncherApp(componentName = activity ?: owner.componentName, label = label, icon = icon, shortcut = identity,
             user = identity.user, userSerial = identity.userSerial, isPrivateSpace = identity.isPrivateSpace,
             showPrivateIndicator = owner.showPrivateIndicator,
-            isWorkProfile = owner.isWorkProfile, showWorkIndicator = owner.showWorkIndicator)
+            isWorkProfile = owner.isWorkProfile, showWorkIndicator = owner.showWorkIndicator,
+            originalIconColor = owner.originalIconColor)
     }
 }
 

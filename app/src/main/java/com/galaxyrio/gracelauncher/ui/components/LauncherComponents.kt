@@ -73,7 +73,6 @@ import androidx.compose.ui.res.stringResource
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.IconDisplayStyle
-import com.galaxyrio.gracelauncher.data.IconDotColor
 import com.galaxyrio.gracelauncher.data.IconShape
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.LauncherFolder
@@ -129,17 +128,7 @@ fun AppIcon(app: LauncherApp, modifier: Modifier = Modifier, size: Dp = 38.dp, a
                     }
                 }
                 // Decorative only; rows keep their own label semantics.
-                val dotColor = when {
-                    app.folderId != null -> MaterialTheme.colorScheme.primary
-                    display.dotColor == IconDotColor.Theme -> MaterialTheme.colorScheme.primary
-                    // Artwork samples and resolved custom colors arrive via iconColor.
-                    app.iconColor != null -> Color(app.iconColor)
-                    display.dotColor == IconDotColor.Custom -> display.customColor
-                        ?.let { Color(it.resolve(MaterialTheme.colorScheme.primary.toArgb(), MaterialTheme.colorScheme.primary.toArgb())) }
-                        ?: MaterialTheme.colorScheme.primary
-                    app.icon == null -> fallbackIconColor(app.key)
-                    else -> MaterialTheme.colorScheme.primary
-                }
+                val dotColor = Color(display.color.resolve(MaterialTheme.colorScheme.primary.toArgb(), app.originalIconColor))
                 Box(Modifier.align(Alignment.Center).size(dotSize)) {
                     Box(Modifier.fillMaxSize().background(dotColor, dotShape))
                     if (showBadge) IconBadge(app, (dotSize * 0.55f).coerceAtLeast(9.dp), Modifier.align(Alignment.BottomEnd))
