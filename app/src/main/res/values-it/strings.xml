@@ -625,4 +625,22 @@
     <string name="icon_dot_color_custom">Personalizzato</string>
     <string name="icon_dot_size">Dimensione punto</string>
     <string name="grace_button_show_on">Mostra su</string>
+    <string name="icon_color_source_theme">Tema</string>
+    <string name="icon_color_source_app">Dall\'app</string>
+    <string name="icon_color_source_fixed">Fisso</string>
+    <string name="icon_color_from_app_summary">Usa l\'icona originale di ogni app, senza pacchetti icona. Se non trova un colore adatto, usa quello del tema.</string>
+    <string name="settings_palette_style">Stile palette</string>
+    <string name="palette_tonal_spot">Tonale</string>
+    <string name="palette_neutral">Neutro</string>
+    <string name="palette_vibrant">Vivace</string>
+    <string name="palette_expressive">Espressivo</string>
+    <string name="palette_rainbow">Arcobaleno</string>
+    <string name="palette_fruit_salad">Macedonia</string>
+    <string name="palette_monochrome">Monocromatica</string>
+    <string name="palette_fidelity">Fedele</string>
+    <string name="palette_content">Contenuto</string>
+    <string name="hide_app">Nascondi app</string>
+    <string name="settings_folder_auto_hide">Nascondi automaticamente le app dentro</string>
+    <string name="settings_folder_auto_hide_summary">Nascondi dall\'elenco delle app quelle già presenti e quelle che verranno aggiunte. Le app nascoste manualmente restano nascoste anche quando escono da questa cartella.</string>
+    <string name="hidden_from_folder">Nascosta dalla cartella</string>
 </resources>
