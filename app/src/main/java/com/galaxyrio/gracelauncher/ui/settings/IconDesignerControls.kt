@@ -59,7 +59,7 @@ internal fun LazyListScope.iconDesignerControls(
     display: IconDisplaySettings? = null, inheritedDisplay: IconDisplaySettings = IconDisplaySettings(),
     onDisplay: (IconDisplaySettings?) -> Unit = {},
     showSuggestions: Boolean = false, suggestion: String? = null, onSuggestion: (String) -> Unit = {},
-    appColor: Int? = null, allowFromApp: Boolean = true,
+    appColor: Int? = null, allowFromApp: Boolean = true, appColors: Pair<Int, Int>? = null,
     onPositionAndSize: (() -> Unit)? = null,
     colorModifier: @Composable (String) -> Modifier = { Modifier },
 ) {
@@ -227,10 +227,10 @@ internal fun LazyListScope.iconDesignerControls(
         DesignerSegment(colorIndex, count, "icon_designer_colors") {
             Text(stringResource(R.string.icon_designer_color))
             if (all || layered || design.addTray) DesignerColorRow(stringResource(R.string.icon_designer_tray_color), design.background,
-                defaults.background, themeColors.first, appColor, allowFromApp, enabled, "icon_designer_background",
+                defaults.background, themeColors.first, appColors?.first, allowFromApp, enabled, "icon_designer_background",
                 colorModifier("background"), { onColor("background") }) { onChange(design.copy(background = defaults.background)) }
             DesignerColorRow(stringResource(R.string.icon_designer_symbol_color), design.foreground,
-                defaults.foreground, themeColors.second, appColor, allowFromApp, enabled, "icon_designer_foreground",
+                defaults.foreground, themeColors.second, appColors?.second, allowFromApp, enabled, "icon_designer_foreground",
                 colorModifier("foreground"), { onColor("foreground") }) { onChange(design.copy(foreground = defaults.foreground)) }
         }
     }
@@ -333,16 +333,19 @@ internal fun DesignerSegment(index: Int, count: Int, tag: String, content: @Comp
 @Composable
 internal fun DesignerSlider(label: String, value: Float, default: Float, range: ClosedFloatingPointRange<Float>,
     enabled: Boolean, tag: String, suffix: String = "%", onFinished: ((Float) -> Unit)? = null,
-    resetEnabled: Boolean = value != default, onReset: (() -> Unit)? = null, onChange: (Float) -> Unit) {
+    resetEnabled: Boolean = value != default, onReset: (() -> Unit)? = null, centered: Boolean = false, onChange: (Float) -> Unit) {
     // A final input event can precede recomposition. Commit that exact value,
     // not the previous frame's captured parameter.
     var latest by remember { mutableFloatStateOf(value) }
     SideEffect { latest = value }
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text("$label · ${value.roundToInt()}$suffix", style = MaterialTheme.typography.labelLarge)
+            val sign = if (centered && value > 0f) "+" else ""
+            Text("$label · $sign${value.roundToInt()}$suffix", style = MaterialTheme.typography.labelLarge)
             Slider(value, { latest = it.roundToInt().toFloat(); onChange(latest) }, valueRange = range, enabled = enabled,
                 onValueChangeFinished = { onFinished?.invoke(latest) },
+                track = { state -> if (centered) SliderDefaults.CenteredTrack(state, enabled = enabled)
+                    else SliderDefaults.Track(state, enabled = enabled) },
                 modifier = Modifier.testTag(tag).semantics { contentDescription = label })
         }
         ResetIconButton(label, enabled && resetEnabled, "${tag}_reset") {

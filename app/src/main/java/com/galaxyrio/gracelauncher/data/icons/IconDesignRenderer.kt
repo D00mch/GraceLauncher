@@ -87,18 +87,18 @@ internal fun iconLayers(drawable: Drawable, size: Int, themed: Boolean = false):
 }
 
 internal fun renderDesignedIcon(layers: IconLayers, design: IconDesign, dynamicBackground: Int, dynamicForeground: Int,
-    themeBackground: Int = dynamicBackground, themeForeground: Int = dynamicForeground, appColor: Int? = null): Bitmap {
+    themeBackground: Int = dynamicBackground, themeForeground: Int = dynamicForeground, appColors: Pair<Int, Int>? = null): Bitmap {
     val style = design.normalized()
     if (style == IconDesign()) return layers.original
     val side = layers.original.width
     val output = createBitmap(side, side)
-    drawDesignedIcon(Canvas(output), layers, style, dynamicBackground, dynamicForeground, themeBackground, themeForeground, appColor)
+    drawDesignedIcon(Canvas(output), layers, style, dynamicBackground, dynamicForeground, themeBackground, themeForeground, appColors)
     return output
 }
 
 /** Draw the same layers directly for previews; moving a symbol must not allocate a bitmap every frame. */
 internal fun drawDesignedIcon(canvas: Canvas, layers: IconLayers, design: IconDesign, dynamicBackground: Int, dynamicForeground: Int,
-    themeBackground: Int = dynamicBackground, themeForeground: Int = dynamicForeground, appColor: Int? = null) {
+    themeBackground: Int = dynamicBackground, themeForeground: Int = dynamicForeground, appColors: Pair<Int, Int>? = null) {
     val style = design.normalized()
     val side = layers.original.width
     val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -115,8 +115,8 @@ internal fun drawDesignedIcon(canvas: Canvas, layers: IconLayers, design: IconDe
         else iconShapePath(style.shape, style.cookieSides, side.toFloat(), style.pebbleRoundness, style.squareCornerRadius)
     mask?.let(canvas::clipPath)
     val canTheme = style.themeIcons && (layers.monochrome != null || style.themeUnsupportedIcons)
-    val background = style.background?.resolve(themeBackground, appColor)
-    val foreground = style.foreground?.resolve(themeForeground, appColor)?.takeIf { canTheme }
+    val background = style.background?.resolve(themeBackground, appColors?.first)
+    val foreground = style.foreground?.resolve(themeForeground, appColors?.second)?.takeIf { canTheme }
     if (layers.layered) {
         if (canTheme && background != null) canvas.drawColor(background)
         else layers.background?.let { canvas.drawBitmap(it, 0f, 0f, paint) }

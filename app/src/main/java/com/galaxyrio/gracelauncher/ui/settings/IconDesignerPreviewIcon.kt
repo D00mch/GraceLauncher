@@ -40,6 +40,7 @@ import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.IconDisplayStyle
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.LauncherApp
+import com.galaxyrio.gracelauncher.data.LauncherSettings
 import com.galaxyrio.gracelauncher.data.icons.IconDominantColor
 import com.galaxyrio.gracelauncher.data.icons.IconLayers
 import com.galaxyrio.gracelauncher.data.icons.ItemIconStore
@@ -57,7 +58,7 @@ import kotlin.math.sin
 @Composable
 internal fun DesignerPreviewIcon(app: LauncherApp, layers: IconLayers?, design: IconDesign, dynamicColors: Pair<Int, Int>,
     size: Dp, modifier: Modifier = Modifier, draggable: Boolean = false, themeColors: Pair<Int, Int> = dynamicColors,
-    onChange: (IconDesign) -> Unit = {}) {
+    appColors: Pair<Int, Int>? = null, onChange: (IconDesign) -> Unit = {}) {
     // Only the drawing reads this draft. Pointer moves no longer rebuild/serialize the editor
     // or queue 768px bitmap renders; sliders and persisted state update once on release.
     var gestureDraft by remember(layers) { mutableStateOf<IconDesign?>(null) }
@@ -129,7 +130,7 @@ internal fun DesignerPreviewIcon(app: LauncherApp, layers: IconLayers?, design: 
                 val checkpoint = canvas.save()
                 canvas.scale(this.size.width / layers.original.width, this.size.height / layers.original.height)
                 drawDesignedIcon(canvas, layers, gestureDraft ?: design, dynamicColors.first, dynamicColors.second,
-                    themeColors.first, themeColors.second, app.originalIconColor)
+                    themeColors.first, themeColors.second, appColors)
                 canvas.restoreToCount(checkpoint)
             }
         } else AppIcon(app, size = size, applyDisplaySize = false)
@@ -140,12 +141,12 @@ internal fun DesignerPreviewIcon(app: LauncherApp, layers: IconLayers?, design: 
 @Composable
 internal fun DesignerDisplayedIcon(app: LauncherApp, layers: IconLayers?, design: IconDesign,
     dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp,
-    display: IconDisplaySettings, modifier: Modifier = Modifier) {
+    display: IconDisplaySettings, modifier: Modifier = Modifier, appColors: Pair<Int, Int>? = null) {
     if (display.style == IconDisplayStyle.Full && layers != null) {
         // The small result rows used to launch another 384/768px bitmap render on
         // every slider tick, even though the large preview already draws the layers.
         Box(modifier.size(size)) {
-            DesignerPreviewIcon(app, layers, design, dynamicColors, size, themeColors = themeColors)
+            DesignerPreviewIcon(app, layers, design, dynamicColors, size, themeColors = themeColors, appColors = appColors)
             if ((app.isPrivateSpace && app.showPrivateIndicator) || (app.isWorkProfile && app.showWorkIndicator)) {
                 IconBadge(app, size * .42f, Modifier.align(Alignment.BottomEnd))
             }
@@ -182,7 +183,8 @@ internal fun DesignerBulkPreviewIcon(app: LauncherApp, uiState: LauncherUiState,
         uiState.settings.enabledIconPackPackages) {
         value = store.layers(app, source, uiState.settings)
     }
-    DesignerPreviewIcon(app, layers, design, dynamicColors, size, themeColors = themeColors)
+    DesignerPreviewIcon(app, layers, design, dynamicColors, size, themeColors = themeColors,
+        appColors = rememberDesignerAppColors(app, uiState.settings, store))
 }
 
 /** Bulk-grid row honoring a resolved display: override design, then dot/hidden. */
@@ -198,7 +200,17 @@ internal fun DesignerDisplayRowIcon(app: LauncherApp, uiState: LauncherUiState, 
         uiState.settings.enabledIconPackPackages) {
         value = store.layers(app, source, uiState.settings)
     }
-    DesignerDisplayedIcon(app, layers, design, dynamicColors, themeColors, size, display)
+    DesignerDisplayedIcon(app, layers, design, dynamicColors, themeColors, size, display,
+        appColors = rememberDesignerAppColors(app, uiState.settings, store))
+}
+
+/** Only base-color inputs invalidate this cache, never a drag or relative HSB edit. */
+@Composable
+internal fun rememberDesignerAppColors(app: LauncherApp?, settings: LauncherSettings, store: ItemIconStore): Pair<Int, Int>? {
+    val configuration = LocalConfiguration.current
+    return remember(app?.originalIconColor, settings.darkMode, settings.paletteStyle, configuration, store) {
+        store.appColors(app?.originalIconColor, settings)
+    }
 }
 
 @Composable
@@ -228,16 +240,19 @@ private fun rememberDesignerSampleApp(row: Int, original: IconLayers): LauncherA
 
 @Composable
 internal fun DesignerSamplePreviewIcon(row: Int, choice: ItemIcon,
-    dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp) {
+    dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp, settings: LauncherSettings, store: ItemIconStore) {
     val original = rememberDesignerSampleLayers(row, dynamicColors)
-    DesignerPreviewIcon(rememberDesignerSampleApp(row, original), original, choice.design ?: IconDesign.defaults(),
-        dynamicColors, size, themeColors = themeColors)
+    val app = rememberDesignerSampleApp(row, original)
+    DesignerPreviewIcon(app, original, choice.design ?: IconDesign.defaults(),
+        dynamicColors, size, themeColors = themeColors, appColors = rememberDesignerAppColors(app, settings, store))
 }
 
 @Composable
 internal fun DesignerSampleDisplayIcon(row: Int, choice: ItemIcon,
-    dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp, display: IconDisplaySettings) {
+    dynamicColors: Pair<Int, Int>, themeColors: Pair<Int, Int>, size: Dp, display: IconDisplaySettings,
+    settings: LauncherSettings, store: ItemIconStore) {
     val original = rememberDesignerSampleLayers(row, dynamicColors)
-    DesignerDisplayedIcon(rememberDesignerSampleApp(row, original), original, choice.design ?: IconDesign.defaults(),
-        dynamicColors, themeColors, size, display)
+    val app = rememberDesignerSampleApp(row, original)
+    DesignerDisplayedIcon(app, original, choice.design ?: IconDesign.defaults(),
+        dynamicColors, themeColors, size, display, appColors = rememberDesignerAppColors(app, settings, store))
 }

@@ -37,7 +37,9 @@ class IconColorSourceTest {
         assertEquals(IconColor.Theme, dots.copy(dotColor = IconDotColor.Theme).color)
         assertEquals(IconColor.Theme, dots.copy(dotColor = IconDotColor.Custom,
             customColor = IconColor.fromStored(app, dynamic = true)).color)
-        listOf(IconColor.Theme, IconColor.FromApp, IconColor(app)).forEach { color ->
+        listOf(IconColor.Theme, IconColor.FromApp, IconColor(app),
+            IconColor.Theme.copy(hueShift = -30, brightnessShift = 20),
+            IconColor.FromApp.copy(saturationShift = -15, brightnessShift = -10)).forEach { color ->
             val changed = dots.withColor(color)
             assertEquals(color, changed.color)
             assertEquals(dots.dotSize, changed.dotSize)

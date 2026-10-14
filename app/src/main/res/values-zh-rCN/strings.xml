@@ -430,6 +430,9 @@
     <string name="icon_designer_reset">重置</string>
     <string name="icon_designer_saturation_brightness">饱和度和亮度</string>
     <string name="icon_designer_hue">色相</string>
+    <string name="icon_designer_saturation">饱和度</string>
+    <string name="icon_designer_brightness">亮度</string>
+    <string name="icon_color_relative_summary">0 表示不变，来源颜色变化后仍应用相同调整。饱和度和亮度按百分点增减。</string>
     <string name="icon_designer_hex">十六进制颜色</string>
     <string name="icon_designer_color_presets">预设颜色</string>
     <string name="icon_pack_description">按启用顺序匹配图标，最后使用系统图标。单独设计的图标优先于图标包。</string>

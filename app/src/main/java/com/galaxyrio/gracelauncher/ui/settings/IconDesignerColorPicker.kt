@@ -45,6 +45,8 @@ internal fun IconDesignerColorPicker(title: String, choice: IconColor?, theme: I
     val source = if (!allowFromApp && choice?.fromApp == true) IconColorSource.Theme
         else choice?.source ?: IconColorSource.Fixed
     val fixed = source == IconColorSource.Fixed
+    val automatic = (choice ?: IconColor.Theme).copy(theme = source == IconColorSource.Theme,
+        fromApp = source == IconColorSource.FromApp).normalized()
     val initialHsv = remember { FloatArray(3).also { AndroidColor.colorToHSV(initial, it) } }
     var hue by rememberSaveable { mutableFloatStateOf(initialHsv[0]) }
     var saturation by rememberSaveable { mutableFloatStateOf(initialHsv[1]) }
@@ -55,9 +57,8 @@ internal fun IconDesignerColorPicker(title: String, choice: IconColor?, theme: I
         hue = hsv[0]; saturation = hsv[1]; brightness = hsv[2]; hex = colorHex(color)
     }
     fun setColor(color: Int) { showColor(color); onChange(IconColor(color)) }
-    // Automatic sources remain live. Do not round-trip HSV while dragging a fixed
-    // color: that would discard precision and cause the thumb to fight the finger.
-    LaunchedEffect(source, initial) { if (!fixed) showColor(initial) }
+    // Automatic sliders edit the source offsets directly. Fixed HSV stays local;
+    // round-tripping each drag through RGB would discard precision and cause jitter.
     fun changeHsv(h: Float = hue, s: Float = saturation, v: Float = brightness) {
         hue = h; saturation = s; brightness = v
         val color = AndroidColor.HSVToColor(floatArrayOf(h, s, v))
@@ -80,6 +81,7 @@ internal fun IconDesignerColorPicker(title: String, choice: IconColor?, theme: I
             }
             DesignerConnectedChoices(IconColorSource.entries.filter { allowFromApp || it != IconColorSource.FromApp },
                 source, true, "icon_designer_color_source", { it.label() }) { selected ->
+                if (selected == source) return@DesignerConnectedChoices
                 when (selected) {
                     IconColorSource.Theme -> { showColor(theme); onChange(IconColor.Theme) }
                     IconColorSource.FromApp -> { showColor(appColor ?: theme); onChange(IconColor.FromApp) }
@@ -88,37 +90,54 @@ internal fun IconDesignerColorPicker(title: String, choice: IconColor?, theme: I
             }
             if (source == IconColorSource.FromApp) Text(stringResource(R.string.icon_color_from_app_summary),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            val planeDescription = stringResource(R.string.icon_designer_saturation_brightness)
-            Canvas(Modifier.fillMaxWidth().height(planeHeight).clip(MaterialTheme.shapes.large).testTag("icon_designer_color_plane")
-                .semantics { contentDescription = planeDescription }
-                .pointerInput(fixed) { if (fixed) detectTapGestures { move(it, size) } }
-                .pointerInput(fixed) { if (fixed) detectDragGestures(onDragStart = { move(it, size) }) { change, _ ->
-                    change.consume(); move(change.position, size)
-                } }) {
-                drawRect(Brush.horizontalGradient(listOf(Color.White, Color(AndroidColor.HSVToColor(floatArrayOf(hue, 1f, 1f))))))
-                drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
-                val point = Offset(saturation * size.width, (1 - brightness) * size.height)
-                drawCircle(Color.Black.copy(alpha = .4f), 9.dp.toPx(), point, style = Stroke(4.dp.toPx()))
-                drawCircle(Color.White, 9.dp.toPx(), point, style = Stroke(2.dp.toPx()))
+            if (fixed) {
+                val planeDescription = stringResource(R.string.icon_designer_saturation_brightness)
+                Canvas(Modifier.fillMaxWidth().height(planeHeight).clip(MaterialTheme.shapes.large).testTag("icon_designer_color_plane")
+                    .semantics { contentDescription = planeDescription }
+                    .pointerInput(Unit) { detectTapGestures { move(it, size) } }
+                    .pointerInput(Unit) { detectDragGestures(onDragStart = { move(it, size) }) { change, _ ->
+                        change.consume(); move(change.position, size)
+                    } }) {
+                    drawRect(Brush.horizontalGradient(listOf(Color.White, Color(AndroidColor.HSVToColor(floatArrayOf(hue, 1f, 1f))))))
+                    drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
+                    val point = Offset(saturation * size.width, (1 - brightness) * size.height)
+                    drawCircle(Color.Black.copy(alpha = .4f), 9.dp.toPx(), point, style = Stroke(4.dp.toPx()))
+                    drawCircle(Color.White, 9.dp.toPx(), point, style = Stroke(2.dp.toPx()))
+                }
+                val hueDescription = stringResource(R.string.icon_designer_hue)
+                Slider(hue, { changeHsv(h = it) }, valueRange = 0f..360f,
+                    modifier = Modifier.testTag("icon_designer_hue").semantics { contentDescription = hueDescription },
+                    track = {
+                        Canvas(Modifier.fillMaxWidth().height(16.dp).clip(CircleShape)) {
+                            drawRect(Brush.horizontalGradient((0..6).map { Color(AndroidColor.HSVToColor(floatArrayOf(it * 60f, 1f, 1f))) }))
+                        }
+                    })
+                OutlinedTextField(value = hex, onValueChange = { raw ->
+                    hex = raw.removePrefix("#").take(6).uppercase(Locale.ROOT)
+                    if (hex.length == 6) hex.toLongOrNull(16)?.let { setColor((it or 0xFF000000).toInt()) }
+                }, label = { Text(stringResource(R.string.icon_designer_hex)) }, prefix = { Text("#") }, singleLine = true,
+                    isError = hex.length == 6 && hex.toLongOrNull(16) == null,
+                    leadingIcon = {
+                        Surface(Modifier.size(24.dp), shape = CircleShape,
+                            color = Color(AndroidColor.HSVToColor(floatArrayOf(hue, saturation, brightness)))) { }
+                    }, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, keyboardType = KeyboardType.Ascii),
+                    modifier = Modifier.fillMaxWidth().testTag("icon_designer_hex"))
+            } else {
+                Text(stringResource(R.string.icon_color_relative_summary), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                DesignerSlider(stringResource(R.string.icon_designer_hue), automatic.hueShift.toFloat(), 0f,
+                    -180f..180f, true, "icon_designer_hue_shift", suffix = "°", centered = true) {
+                    onChange(automatic.copy(hueShift = it.toInt()))
+                }
+                DesignerSlider(stringResource(R.string.icon_designer_saturation), automatic.saturationShift.toFloat(), 0f,
+                    -100f..100f, true, "icon_designer_saturation_shift", centered = true) {
+                    onChange(automatic.copy(saturationShift = it.toInt()))
+                }
+                DesignerSlider(stringResource(R.string.icon_designer_brightness), automatic.brightnessShift.toFloat(), 0f,
+                    -100f..100f, true, "icon_designer_brightness_shift", centered = true) {
+                    onChange(automatic.copy(brightnessShift = it.toInt()))
+                }
             }
-            val hueDescription = stringResource(R.string.icon_designer_hue)
-            Slider(hue, { changeHsv(h = it) }, valueRange = 0f..360f, enabled = fixed,
-                modifier = Modifier.testTag("icon_designer_hue").semantics { contentDescription = hueDescription },
-                track = {
-                    Canvas(Modifier.fillMaxWidth().height(16.dp).clip(CircleShape)) {
-                        drawRect(Brush.horizontalGradient((0..6).map { Color(AndroidColor.HSVToColor(floatArrayOf(it * 60f, 1f, 1f))) }))
-                    }
-                })
-            OutlinedTextField(value = hex, onValueChange = { raw ->
-                hex = raw.removePrefix("#").take(6).uppercase(Locale.ROOT)
-                if (hex.length == 6) hex.toLongOrNull(16)?.let { setColor((it or 0xFF000000).toInt()) }
-            }, label = { Text(stringResource(R.string.icon_designer_hex)) }, prefix = { Text("#") }, singleLine = true, enabled = fixed,
-                isError = hex.length == 6 && hex.toLongOrNull(16) == null,
-                leadingIcon = {
-                    Surface(Modifier.size(24.dp), shape = CircleShape,
-                        color = Color(AndroidColor.HSVToColor(floatArrayOf(hue, saturation, brightness)))) { }
-                }, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, keyboardType = KeyboardType.Ascii),
-                modifier = Modifier.fillMaxWidth().testTag("icon_designer_hex"))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { onChange(default); onClose() }, Modifier.testTag("icon_designer_color_reset")) {
                     Text(stringResource(R.string.icon_designer_reset))

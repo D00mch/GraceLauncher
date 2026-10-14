@@ -17,14 +17,13 @@ import android.util.LruCache
 import android.util.Log
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.toArgb
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.IconDesign
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
 import com.galaxyrio.gracelauncher.data.LauncherSettings
 import com.galaxyrio.gracelauncher.data.ThemeMode
-import com.galaxyrio.gracelauncher.data.launcherColorScheme
+import com.galaxyrio.gracelauncher.data.launcherIconColors
 import com.galaxyrio.gracelauncher.data.launcherThemeSeed
 import com.materialkolor.PaletteStyle
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +37,7 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
     private val directory get() = File(context.filesDir, "item_icons")
     private val images = LruCache<String, Bitmap>(12)
     private val themePalettes = LruCache<Triple<Int, Boolean, PaletteStyle>, Pair<Int, Int>>(8)
+    private val appPalettes = LruCache<Triple<Int, Boolean, PaletteStyle>, Pair<Int, Int>>(256)
 
     private fun imageBitmap(name: String, size: Int): Bitmap? = runCatching {
         val key = "$name:$size"
@@ -76,9 +76,14 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
 
     private fun paletteColors(seed: Int, dark: Boolean, style: PaletteStyle): Pair<Int, Int> {
         val key = Triple(seed, dark, style)
-        return themePalettes[key] ?: launcherColorScheme(seed, dark, style).let {
-            it.primaryContainer.toArgb() to it.onPrimaryContainer.toArgb()
-        }.also { themePalettes.put(key, it) }
+        return themePalettes[key] ?: launcherIconColors(seed, dark, style).also { themePalettes.put(key, it) }
+    }
+
+    /** Cache base roles only: moving HSB sliders must not regenerate a scheme. */
+    internal fun appColors(seed: Int?, settings: LauncherSettings): Pair<Int, Int>? {
+        if (seed == null) return null
+        val key = Triple(seed, isDark(settings), settings.paletteStyle)
+        return appPalettes[key] ?: launcherIconColors(key.first, key.second, key.third).also { appPalettes.put(key, it) }
     }
 
     internal fun dynamicColors(settings: LauncherSettings): Pair<Int, Int> {
@@ -129,8 +134,10 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
                 val original = layers(app, choice, settings, if (app.isGraceButton) 256 else 144) ?: return@safelyRender app
                 val colors = dynamicColors(settings)
                 val theme = themeColors(settings)
+                val fromApp = if (design.background?.fromApp == true || design.foreground?.fromApp == true)
+                    appColors(app.originalIconColor, settings) else null
                 return@safelyRender app.copy(icon = renderDesignedIcon(original, design, colors.first, colors.second,
-                    theme.first, theme.second, app.originalIconColor).asImageBitmap(),
+                    theme.first, theme.second, fromApp).asImageBitmap(),
                     monochromeIcon = null, iconPackPackage = when (choice.kind) {
                         "theme" -> app.themeIconPackPackage
                         "pack" -> choice.source

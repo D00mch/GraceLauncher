@@ -435,6 +435,9 @@
     <string name="icon_designer_reset">Reset</string>
     <string name="icon_designer_saturation_brightness">Saturation and brightness</string>
     <string name="icon_designer_hue">Hue</string>
+    <string name="icon_designer_saturation">Saturation</string>
+    <string name="icon_designer_brightness">Brightness</string>
+    <string name="icon_color_relative_summary">0 keeps the source unchanged. Adjustments follow future color changes; saturation and brightness use percentage points.</string>
     <string name="icon_designer_hex">Hex color</string>
     <string name="icon_designer_color_presets">Color presets</string>
     <string name="icon_pack_description">Icons use enabled packs in order, then system icons. Per-app designs take priority.</string>

@@ -157,6 +157,15 @@ class IconDesignerTest {
         val picker = compose.onNodeWithTag("icon_designer_color_picker").fetchSemanticsNode().boundsInRoot
         assertTrue(preview.bottom <= picker.top)
         compose.onNodeWithTag("icon_designer_color_source:FromApp", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("icon_designer_color_plane").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_hex").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_hue_shift").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(30f) }
+        compose.onNodeWithTag("icon_designer_saturation_shift").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(-20f) }
+        compose.onNodeWithTag("icon_designer_brightness_shift").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(15f) }
+        compose.onNodeWithTag("icon_designer_hue_shift_reset").performScrollTo().performClick()
         compose.onNodeWithTag("icon_designer_color_done").performScrollTo().performClick()
         compose.onNodeWithTag("icon_designer_x").performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(20f) }
         compose.onNodeWithTag("icon_designer_size").performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(150f) }
@@ -170,7 +179,7 @@ class IconDesignerTest {
             assertEquals(9, specialSaved?.design?.cookieSides)
             assertEquals(20f, specialSaved?.design?.x)
             assertEquals(100, specialSaved?.design?.size)
-            assertEquals(IconColor.FromApp, specialSaved?.design?.foreground)
+            assertEquals(IconColor.FromApp.copy(saturationShift = -20, brightnessShift = 15), specialSaved?.design?.foreground)
             assertNull(bulkSaved)
         }
     }

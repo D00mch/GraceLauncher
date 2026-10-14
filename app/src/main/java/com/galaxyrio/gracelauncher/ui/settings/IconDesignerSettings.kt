@@ -72,7 +72,8 @@ internal fun IconDesignerPreview(
                     }
                 } else if (rowDisplay.style == IconDisplayStyle.Full) {
                     DesignerPreviewIcon(selectedApp, layers, design, dynamicColors, 160.dp * (design.iconSize / 100f),
-                        Modifier.testTag("icon_designer_selected_app"), draggable = enabled, onChange = onChange, themeColors = themeColors)
+                        Modifier.testTag("icon_designer_selected_app"), draggable = enabled, onChange = onChange, themeColors = themeColors,
+                        appColors = rememberDesignerAppColors(selectedApp, uiState.settings, store))
                 } else {
                     Row(Modifier.testTag("icon_designer_display_result").padding(horizontal = 20.dp),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -120,7 +121,7 @@ private fun AllIconsPreview(uiState: LauncherUiState, choice: ItemIcon, store: I
                     if (rowDisplay.style != IconDisplayStyle.Hidden) {
                         Box(Modifier.testTag("icon_designer_icon:$row:0")) {
                             if (app != null) DesignerDisplayRowIcon(app, uiState, choice, store, dynamicColors, themeColors, iconSize, rowDisplay)
-                            else DesignerSampleDisplayIcon(row, choice, dynamicColors, themeColors, iconSize, rowDisplay)
+                            else DesignerSampleDisplayIcon(row, choice, dynamicColors, themeColors, iconSize, rowDisplay, uiState.settings, store)
                         }
                         Spacer(Modifier.width(LauncherLayout.IconLabelGap))
                     }

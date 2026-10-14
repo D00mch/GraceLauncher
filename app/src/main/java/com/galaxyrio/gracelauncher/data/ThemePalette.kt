@@ -3,6 +3,7 @@ package com.galaxyrio.gracelauncher.data
 import android.content.res.Resources
 import android.os.Build
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
 import com.materialkolor.dynamiccolor.ColorSpec
@@ -16,3 +17,7 @@ internal fun launcherThemeSeed(resources: Resources, dynamic: Boolean, fallback:
 internal fun launcherColorScheme(seed: Int, dark: Boolean, style: PaletteStyle) = dynamicColorScheme(
     seedColor = Color(seed), isDark = dark, style = style, specVersion = ColorSpec.SpecVersion.SPEC_2025,
 )
+
+/** A tray and the symbol on it are a paired Material role, not two copies of the seed. */
+internal fun launcherIconColors(seed: Int, dark: Boolean, style: PaletteStyle): Pair<Int, Int> =
+    launcherColorScheme(seed, dark, style).let { it.primaryContainer.toArgb() to it.onPrimaryContainer.toArgb() }

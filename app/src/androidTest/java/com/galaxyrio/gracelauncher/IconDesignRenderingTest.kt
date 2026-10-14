@@ -79,12 +79,14 @@ class IconDesignRenderingTest {
         assertTrue(Color.alpha(inverted.getPixel(2, 0)) in 63..65)
     }
 
-    @Test fun fromAppUsesTheOriginalAppColorInsteadOfTheDisplayedPackArtwork() {
+    @Test fun fromAppUsesPairedRolesFromTheOriginalSeedInsteadOfTheDisplayedPackArtwork() {
+        val colors = launcherIconColors(Color.MAGENTA, false, com.materialkolor.PaletteStyle.TonalSpot)
         val result = renderDesignedIcon(layers(),
-            IconDesign(background = IconColor.FromApp, foreground = IconColor.Theme, themeIcons = true),
-            Color.GREEN, Color.YELLOW, appColor = Color.MAGENTA)
-        assertEquals(Color.MAGENTA, result.getPixel(10, 10))
-        assertEquals(Color.YELLOW, result.getPixel(50, 50))
+            IconDesign(background = IconColor.FromApp.copy(brightnessShift = -10), foreground = IconColor.FromApp, themeIcons = true),
+            Color.GREEN, Color.YELLOW, appColors = colors)
+        assertEquals(IconColor.FromApp.copy(brightnessShift = -10).resolve(Color.GREEN, colors.first), result.getPixel(10, 10))
+        assertEquals(colors.second, result.getPixel(50, 50))
+        assertNotEquals(result.getPixel(10, 10), result.getPixel(50, 50))
     }
 
     @Test fun adaptiveWithoutMonochromeUsesForegroundAlphaAndIgnoresInversion() {

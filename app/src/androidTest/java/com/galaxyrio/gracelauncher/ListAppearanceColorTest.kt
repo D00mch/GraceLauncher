@@ -46,6 +46,12 @@ class ListAppearanceColorTest {
         compose.onNodeWithTag("settings_dim_wallpaper_color").performClick()
         compose.onNodeWithTag("list_appearance_preview").assertIsDisplayed()
         compose.onNodeWithTag("icon_designer_color_source:FromApp", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_color_source:Theme", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("icon_designer_color_plane").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_hex").assertDoesNotExist()
+        compose.onNodeWithTag("icon_designer_brightness_shift").performScrollTo()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(-15f) }
+        compose.onNodeWithTag("icon_designer_color_source:Fixed", useUnmergedTree = true).performScrollTo()
         compose.onNodeWithTag("icon_designer_color_source:Fixed", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("icon_designer_hex").performTextReplacement("274B62")
         compose.onNodeWithTag("icon_designer_color_close").performClick()

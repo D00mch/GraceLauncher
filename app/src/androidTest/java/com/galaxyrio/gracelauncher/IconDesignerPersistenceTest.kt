@@ -13,6 +13,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class IconDesignerPersistenceTest {
+    @Test fun relativeColorOffsetsRoundTripForIconsDotsAndNonAppColors() {
+        val tray = IconColor.FromApp.copy(hueShift = 30, saturationShift = -25, brightnessShift = 10)
+        val symbol = IconColor.Theme.copy(hueShift = -15, brightnessShift = -20)
+        val original = ItemIcon.Theme.copy(design = IconDesign(background = tray, foreground = symbol),
+            display = IconDisplaySettings(style = IconDisplayStyle.Dot).withColor(tray))
+        assertEquals(original, ItemIcon.decode(original.encode()))
+        assertEquals(tray, ItemIcon.decode(original.encode())?.display?.color)
+        val list = ListAppearance(fontColor = symbol, wallpaperDimColor = symbol)
+        assertEquals(list, ListAppearance.decode(list.encode()))
+        assertEquals(IconColor.Theme, IconColor.decode(JSONObject("""{"theme":true}""")))
+        assertEquals(IconColor.FromApp, IconColor.decode(JSONObject("""{"fromApp":true}""")))
+    }
+
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val databaseName = "icon-designer-${UUID.randomUUID()}.db"
     private var database: LauncherDatabase? = null

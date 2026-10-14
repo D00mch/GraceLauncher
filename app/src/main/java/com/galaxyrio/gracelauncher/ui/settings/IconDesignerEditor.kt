@@ -262,6 +262,9 @@ internal fun IconDesignerSettings(
                     val isAll = displayed == DesignerPage.All
                     val shownChoice = if (isAll) bulkChoice else specialChoice
                     val shownDesign = (shownChoice.design ?: shared).copy(iconSize = if (!isAll && button) 100 else shared.iconSize)
+                    val colorApp = if (isAll) remember(uiState.allApps) {
+                        iconDesignerPreviewRows(uiState.allApps).firstNotNullOfOrNull { it.firstOrNull() }
+                    } else app
                     val sourceLabel = when (shownChoice.kind) {
                         "pack" -> uiState.iconPacks.firstOrNull { it.packageName == shownChoice.source }?.label ?: shownChoice.source
                         "image" -> stringResource(R.string.icon_edit_image)
@@ -282,7 +285,8 @@ internal fun IconDesignerSettings(
                             onDisplay = { change(shownChoice.copy(display = it)) },
                             showSuggestions = !isAll && button,
                             allowFromApp = isAll || (app != null && app.folderId == null && !button),
-                            appColor = if (isAll) uiState.allApps.firstOrNull { it.folderId == null }?.originalIconColor else app?.originalIconColor,
+                            appColor = colorApp?.originalIconColor,
+                            appColors = rememberDesignerAppColors(colorApp, uiState.settings, store),
                             onPositionAndSize = onPositionAndSize?.let { { request("position") } },
                             onSuggestion = { change(ItemIcon("symbol", name = it, design = design, display = shownChoice.display)) }, modifier = Modifier.weight(1f))
                     }
@@ -319,7 +323,7 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
     inheritedDisplay: IconDisplaySettings,
     onSwitch: () -> Unit, onSource: () -> Unit, onColor: (String) -> Unit, onCloseColor: () -> Unit,
     onChange: (IconDesign) -> Unit, onDisplay: (IconDisplaySettings?) -> Unit, showSuggestions: Boolean,
-    allowFromApp: Boolean, appColor: Int?,
+    allowFromApp: Boolean, appColor: Int?, appColors: Pair<Int, Int>?,
     onSuggestion: (String) -> Unit, onPositionAndSize: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     val design = choice.design ?: IconDesign()
     val heroSpec = MaterialTheme.motionScheme.slowSpatialSpec<Rect>()
@@ -336,7 +340,7 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
                 iconDesignerControls(all, enabled, appLabel, sourceLabel, design, layered, dynamicColors, themeColors, defaults,
                     onSwitch, onSource, onColor, onChange,
                     display = choice.display, inheritedDisplay = inheritedDisplay, onDisplay = onDisplay,
-                    appColor = appColor, allowFromApp = allowFromApp,
+                    appColor = appColor, allowFromApp = allowFromApp, appColors = appColors,
                     showSuggestions = showSuggestions, suggestion = when (choice.kind) {
                         "symbol" -> choice.name
                         "system", "theme" -> GraceButtonIcon.Suggestion.Default.id
@@ -361,7 +365,7 @@ private fun DesignerControlsPane(all: Boolean, choice: ItemIcon, layered: Boolea
                     if (background) defaults.background else defaults.foreground,
                     onChange = { value -> if (enabled) onChange(if (background) design.copy(background = value)
                         else design.copy(foreground = value)) }, onClose = onCloseColor,
-                    allowFromApp = allowFromApp, appColor = appColor,
+                    allowFromApp = allowFromApp, appColor = if (background) appColors?.first else appColors?.second,
                     modifier = Modifier.sharedBounds(rememberSharedContentState("color:$activeColor"), visibility,
                         boundsTransform = heroBounds, clipInOverlayDuringTransition = OverlayClip(shape)))
             }

@@ -21,14 +21,14 @@ data class IconDisplaySettings(
     val dotSquareCornerRadius: Int = 0,
 ) {
     val color: IconColor get() = when (dotColor) {
-        IconDotColor.Artwork -> IconColor.FromApp
-        IconDotColor.Theme -> IconColor.Theme
+        IconDotColor.Artwork -> customColor?.takeIf { it.source == IconColorSource.FromApp } ?: IconColor.FromApp
+        IconDotColor.Theme -> customColor?.takeIf { it.source == IconColorSource.Theme } ?: IconColor.Theme
         IconDotColor.Custom -> customColor ?: IconColor.Theme
     }
 
     fun withColor(value: IconColor): IconDisplaySettings = when (value.source) {
-        IconColorSource.Theme -> copy(dotColor = IconDotColor.Theme, customColor = null)
-        IconColorSource.FromApp -> copy(dotColor = IconDotColor.Artwork, customColor = null)
+        IconColorSource.Theme -> copy(dotColor = IconDotColor.Theme, customColor = value.takeUnless { it == IconColor.Theme })
+        IconColorSource.FromApp -> copy(dotColor = IconDotColor.Artwork, customColor = value.takeUnless { it == IconColor.FromApp })
         IconColorSource.Fixed -> copy(dotColor = IconDotColor.Custom, customColor = value)
     }
 

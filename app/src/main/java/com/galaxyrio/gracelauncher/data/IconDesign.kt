@@ -7,29 +7,47 @@ enum class IconShape { None, Circle, Pebble, Square, Gem, Cookie }
 enum class IconColorSource { Theme, FromApp, Fixed }
 
 /** Store a source, not a snapshot, for theme and original-app colors. */
-data class IconColor(val argb: Int, val theme: Boolean = false, val fromApp: Boolean = false) {
+data class IconColor(
+    val argb: Int,
+    val theme: Boolean = false,
+    val fromApp: Boolean = false,
+    /** Relative HSB offsets: degrees for hue, percentage points for S/B. */
+    val hueShift: Int = 0,
+    val saturationShift: Int = 0,
+    val brightnessShift: Int = 0,
+) {
     val source: IconColorSource get() = when {
         theme -> IconColorSource.Theme
         fromApp -> IconColorSource.FromApp
         else -> IconColorSource.Fixed
     }
-    internal fun json() = JSONObject().put("argb", argb).put("theme", theme).put("fromApp", fromApp)
+    fun normalized(): IconColor = copy(
+        hueShift = if (source == IconColorSource.Fixed) 0 else hueShift.coerceIn(-180, 180),
+        saturationShift = if (source == IconColorSource.Fixed) 0 else saturationShift.coerceIn(-100, 100),
+        brightnessShift = if (source == IconColorSource.Fixed) 0 else brightnessShift.coerceIn(-100, 100),
+    )
+    internal fun json() = normalized().let {
+        JSONObject().put("argb", it.argb).put("theme", it.theme).put("fromApp", it.fromApp)
+            .put("hueShift", it.hueShift).put("saturationShift", it.saturationShift).put("brightnessShift", it.brightnessShift)
+    }
     fun resolve(themeColor: Int, appColor: Int? = null): Int = when {
-        theme -> themeColor
-        fromApp -> appColor ?: themeColor
+        theme -> adjustHsb(themeColor, hueShift, saturationShift, brightnessShift)
+        fromApp -> adjustHsb(appColor ?: themeColor, hueShift, saturationShift, brightnessShift)
         else -> argb
     }
     companion object {
         val Theme = IconColor(0, theme = true)
         val FromApp = IconColor(0, fromApp = true)
-        internal fun fromStored(argb: Int, theme: Boolean = false, dynamic: Boolean = false, fromApp: Boolean = false) = when {
+        internal fun fromStored(argb: Int, theme: Boolean = false, dynamic: Boolean = false, fromApp: Boolean = false,
+            hueShift: Int = 0, saturationShift: Int = 0, brightnessShift: Int = 0): IconColor = (when {
             // Retire the old dynamic preset without requiring a database migration.
             theme || dynamic -> Theme
             fromApp -> FromApp
             else -> IconColor(argb)
-        }
+        }).copy(hueShift = hueShift, saturationShift = saturationShift, brightnessShift = brightnessShift).normalized()
         internal fun decode(value: JSONObject?) = value?.let {
-            fromStored(it.optInt("argb"), it.optBoolean("theme"), it.optBoolean("dynamic"), it.optBoolean("fromApp"))
+            fromStored(it.optInt("argb"), it.optBoolean("theme"), it.optBoolean("dynamic"), it.optBoolean("fromApp"),
+                it.optInt("hueShift"), it.optInt("saturationShift"), it.optInt("brightnessShift"))
         }
     }
 }
