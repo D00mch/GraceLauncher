@@ -643,4 +643,18 @@
     <string name="settings_folder_auto_hide">Nascondi automaticamente le app dentro</string>
     <string name="settings_folder_auto_hide_summary">Nascondi dall\'elenco delle app quelle già presenti e quelle che verranno aggiunte. Le app nascoste manualmente restano nascoste anche quando escono da questa cartella.</string>
     <string name="hidden_from_folder">Nascosta dalla cartella</string>
+    <string name="settings_recently_installed_summary">Mostra nell\'elenco app le 8 app installate più di recente</string>
+    <string name="icon_designer_square_aspect_ratio">Proporzioni</string>
+    <string name="icon_designer_saturation">Saturazione</string>
+    <string name="icon_designer_brightness">Luminosità</string>
+    <string name="icon_color_relative_summary">Con 0 la sorgente resta invariata. Le regolazioni si adattano ai futuri cambi di colore; saturazione e luminosità sono espresse in punti percentuali.</string>
+    <string name="settings_additional_screen">Schermo aggiuntivo</string>
+    <string name="widget_screen_title">Schermata dei widget</string>
+    <string name="widget_screen_enable">Abilita schermata dei widget</string>
+    <string name="widget_screen_swipe">Scorri a sinistra nella schermata home</string>
+    <string name="widget_screen_swipe_disabled">Puoi aprire questa schermata con un gesto o con un\'azione del pulsante Grace</string>
+    <string name="widget_screen_columns">Celle per riga</string>
+    <string name="widget_screen_edit">Modifica schermata dei widget</string>
+    <string name="widget_screen_open">Apri schermata dei widget</string>
+    <string name="hide_recently_installed">Nascondi installate di recente</string>
 </resources>
