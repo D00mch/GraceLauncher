@@ -34,12 +34,17 @@ class HomeWidgetHost(context: Context) : AppWidgetHost(context, HOST_ID) {
 /** Observe the native widget's gestures without stealing its buttons or scrolling. */
 class HomeWidgetHostView(context: Context) : AppWidgetHostView(context) {
     var onWidgetLongPress: (() -> Unit)? = null
+    var onWidgetDragStart: ((Float, Float) -> Unit)? = null
+    var onWidgetDrag: ((Float, Float) -> Unit)? = null
+    var onWidgetDragEnd: ((Boolean) -> Unit)? = null
     var interactionEnabled = true
     var hapticsEnabled = true
     private var downX = 0f
     private var downY = 0f
     private var downTime = 0L
     private var held = false
+    private var lastRawX = 0f
+    private var lastRawY = 0f
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private val longPress = Runnable {
         if (onWidgetLongPress == null || !isAttachedToWindow || !interactionEnabled) return@Runnable
@@ -49,20 +54,31 @@ class HomeWidgetHostView(context: Context) : AppWidgetHostView(context) {
         cancel.recycle()
         parent?.requestDisallowInterceptTouchEvent(true)
         if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-        onWidgetLongPress?.invoke()
+        onWidgetDragStart?.invoke(downX, downY) ?: onWidgetLongPress?.invoke()
     }
 
     init { isClickable = true }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        if (!interactionEnabled) { removeCallbacks(longPress); held = false; return true }
         if (held) {
-            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) held = false
+            when (event.actionMasked) {
+                MotionEvent.ACTION_MOVE -> {
+                    onWidgetDrag?.invoke(event.rawX - lastRawX, event.rawY - lastRawY)
+                    lastRawX = event.rawX; lastRawY = event.rawY
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN -> {
+                    held = false
+                    onWidgetDragEnd?.invoke(event.actionMasked != MotionEvent.ACTION_UP)
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                }
+            }
             return true
         }
+        if (!interactionEnabled) { removeCallbacks(longPress); return true }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = event.x; downY = event.y; downTime = event.downTime
+                lastRawX = event.rawX; lastRawY = event.rawY
                 removeCallbacks(longPress)
                 postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
             }
@@ -74,6 +90,7 @@ class HomeWidgetHostView(context: Context) : AppWidgetHostView(context) {
 
     override fun onDetachedFromWindow() {
         removeCallbacks(longPress)
+        if (held) onWidgetDragEnd?.invoke(true)
         held = false
         super.onDetachedFromWindow()
     }

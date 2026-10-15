@@ -82,6 +82,7 @@ class LauncherSettingsRepository(private val database: LauncherDatabase) {
             homeGesturesJson = settings.homeGestures.encode(),
             searchJson = settings.search.encode(),
             shortcutsFoldersJson = settings.shortcutsFolders.encode(),
+            widgetScreenJson = settings.widgetScreen.encode(),
         ))
     }
 
@@ -189,6 +190,7 @@ private fun LauncherSettingsEntity.toSettings() = LauncherSettings(
     homeGestures = GraceButtonSettings.decode(homeGesturesJson, GraceButtonSettings.homeDefaults()),
     search = SearchSettings.decode(searchJson),
     shortcutsFolders = ShortcutsFoldersSettings.decode(shortcutsFoldersJson),
+    widgetScreen = WidgetScreenSettings.decode(widgetScreenJson),
 )
 
 private fun decodeIconPackOrder(json: String?): List<String> = runCatching {

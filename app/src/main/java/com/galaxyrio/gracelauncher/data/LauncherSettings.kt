@@ -53,6 +53,7 @@ data class LauncherSettings(
     val shortcutsFolders: ShortcutsFoldersSettings = ShortcutsFoldersSettings(),
     val graceButton: GraceButtonSettings = GraceButtonSettings(),
     val homeGestures: GraceButtonSettings = GraceButtonSettings.homeDefaults(),
+    val widgetScreen: WidgetScreenSettings = WidgetScreenSettings(),
 ) {
     /** Icon designer overrides precede this order; system icons always follow it. */
     val enabledIconPackPackages: List<String>

@@ -660,4 +660,12 @@
     <string name="settings_folder_auto_hide">自动隐藏内部的应用</string>
     <string name="settings_folder_auto_hide_summary">从应用列表隐藏当前和今后加入的应用。移出后仍会保留手动设置的隐藏状态。</string>
     <string name="hidden_from_folder">从文件夹隐藏</string>
+    <string name="settings_additional_screen">附加页面</string>
+    <string name="widget_screen_title">小组件页面</string>
+    <string name="widget_screen_enable">启用小组件页面</string>
+    <string name="widget_screen_swipe">左滑桌面进入</string>
+    <string name="widget_screen_swipe_disabled">可以在手势或 Grace 按钮动作中设置进入</string>
+    <string name="widget_screen_columns">每行格子数</string>
+    <string name="widget_screen_edit">编辑小组件页面</string>
+    <string name="widget_screen_open">打开小组件页面</string>
 </resources>

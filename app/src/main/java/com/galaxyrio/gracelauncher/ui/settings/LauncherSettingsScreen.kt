@@ -79,6 +79,7 @@ internal enum class SettingsPage {
     MediaPlayer, GraceButton, GraceAction, GraceApp, GraceShortcut, GraceFolder, Gestures, WorkProfile, WorkProfileEditor,
     LabGraceButton, LabGesture, Fonts, ListAppearance, Alphabet, ShortcutsFolders,
     GraceButtonAppearance, GraceButtonPosition, CalendarAppearance, WeatherAppearance, MediaPlayerAppearance,
+    WidgetScreen, WidgetScreenEditor,
 }
 
 /** Navigation owns each page's saved state and seekable predictive-back transition. */
@@ -195,6 +196,8 @@ fun LauncherSettingsScreen(
                     SettingsPage.Clock -> ClockSettings(uiState, actions, back) { navigate(SettingsPage.ClockStyle) }
                     SettingsPage.Search -> SearchSettingsScreen(uiState, actions, back)
                     SettingsPage.ShortcutsFolders -> ShortcutsFoldersSettingsScreen(uiState, actions, back)
+                    SettingsPage.WidgetScreen -> WidgetScreenSettingsPage(uiState, actions, back) { navigate(SettingsPage.WidgetScreenEditor) }
+                    SettingsPage.WidgetScreenEditor -> com.galaxyrio.gracelauncher.ui.overlays.WidgetScreenEditor(uiState, actions, back)
                     SettingsPage.MediaPlayer -> MediaPlayerSettings(uiState, actions, back) { navigate(SettingsPage.MediaPlayerAppearance) }
                     SettingsPage.GraceButton, SettingsPage.Gestures -> GraceButtonSettingsScreen(uiState, actions, back,
                         home = page == SettingsPage.Gestures, onAppearance = { navigate(SettingsPage.GraceButtonAppearance) }) { gesture ->

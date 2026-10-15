@@ -39,6 +39,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -125,6 +127,7 @@ import com.galaxyrio.gracelauncher.ui.components.LauncherSymbol
 import com.galaxyrio.gracelauncher.ui.drawer.AppDrawerScreen
 import com.galaxyrio.gracelauncher.ui.drawer.AppListModel
 import com.galaxyrio.gracelauncher.ui.home.HomeScreen
+import com.galaxyrio.gracelauncher.ui.home.WidgetScreen
 import com.galaxyrio.gracelauncher.ui.settings.LauncherSettingsScreen
 import com.galaxyrio.gracelauncher.ui.overlays.LauncherOverlay
 import com.galaxyrio.gracelauncher.ui.overlays.LauncherOverlays
@@ -516,6 +519,12 @@ internal fun LauncherScreen(
     widgetEditRequest: Int = 0,
 ) {
     var drawerOpen by rememberSaveable { mutableStateOf(initialDrawerOpen) }
+    val homePager = rememberPagerState { if (uiState.settings.widgetScreen.enabled) 2 else 1 }
+    val pageScope = rememberCoroutineScope()
+    var editingWidgetScreen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(uiState.settings.widgetScreen.enabled) {
+        if (!uiState.settings.widgetScreen.enabled) { editingWidgetScreen = false; homePager.scrollToPage(0) }
+    }
     var selectedLetter by remember { mutableStateOf<String?>(null) }
     var overlay by remember { mutableStateOf<LauncherOverlay?>(null) }
     var systemActionAccess by rememberSaveable { mutableStateOf(false) }
@@ -656,7 +665,10 @@ internal fun LauncherScreen(
         privateFolderWasOpen = folderOpen || (privateFolderWasOpen && privateAppEditing)
         if (folderOpen && (!drawerOpen || uiState.settings.privateSpace.display != PrivateSpaceDisplay.Folder)) overlay = null
     }
-    val screenActions = actions.copy(moveWidget = { drawerOpen = false; selectedLetter = null; overlay = null; editingHome = true })
+    val screenActions = actions.copy(moveWidget = {
+        pageScope.launch { homePager.scrollToPage(0) }
+        editingWidgetScreen = false; drawerOpen = false; selectedLetter = null; overlay = null; editingHome = true
+    })
     LaunchedEffect(drawerOpen, workFolder, uiState.settings.workProfile.display) {
         if (!drawerOpen || workFolder == null || uiState.settings.workProfile.display != PrivateSpaceDisplay.List) workListOpen = false
     }
@@ -665,18 +677,23 @@ internal fun LauncherScreen(
     val statusBarPull = rememberLauncherSystemBars(
         autoHide = uiState.settings.hideStatusBar && (!fullScreen || searching),
         darkIcons = darkSystemIcons,
-        allowPullDown = !fullScreen && !editingHome && overlay == null && buttonTransition == null,
+        allowPullDown = !fullScreen && !editingHome && !editingWidgetScreen && overlay == null && buttonTransition == null,
     )
 
     LaunchedEffect(returnHomeRequests) {
         returnHomeRequests.collect {
             firstItemJob?.cancel()
             drawerOpen = false; selectedLetter = null; overlay = null; editingHome = false
+            editingWidgetScreen = false
+            homePager.scrollToPage(0)
             if (buttonTransition?.lockCommitted != true) buttonTransition = null
         }
     }
     LaunchedEffect(widgetEditRequest) {
-        if (widgetEditRequest > 0) { drawerOpen = false; selectedLetter = null; overlay = null; editingHome = true }
+        if (widgetEditRequest > 0) {
+            homePager.scrollToPage(0); editingWidgetScreen = false
+            drawerOpen = false; selectedLetter = null; overlay = null; editingHome = true
+        }
     }
     LaunchedEffect(model.letters) {
         if (selectedLetter !in model.letters) selectedLetter = null
@@ -685,6 +702,8 @@ internal fun LauncherScreen(
         when {
             overlay != null -> overlay = (overlay as? LauncherOverlay.AppDetails)?.returnTo
             editingHome -> editingHome = false
+            editingWidgetScreen -> editingWidgetScreen = false
+            homePager.currentPage != 0 -> pageScope.launch { homePager.animateScrollToPage(0) }
             selectedLetter != null -> selectedLetter = null
             else -> drawerOpen = false
         }
@@ -726,6 +745,9 @@ internal fun LauncherScreen(
         // The list is already positioned. Only remove the temporary mask;
         // scrolling here would cause a jump between the held and released views.
         selectedLetter = null
+        // The star still means Favorites, including when scrubbing began on Widget screen.
+        // Wait for release so changing pages cannot interrupt the alphabet pointer stream.
+        if (!drawerOpen && homePager.currentPage != 0) pageScope.launch { homePager.animateScrollToPage(0) }
     }
     val popupSettings = uiState.settings.shortcutsFolders
     LaunchedEffect(popupSettings.enabled) {
@@ -900,12 +922,20 @@ internal fun LauncherScreen(
                 } else Toast.makeText(context, R.string.folder_unavailable, Toast.LENGTH_SHORT).show()
             }
             GraceButtonAction.AppList -> {
+                editingWidgetScreen = false
+                pageScope.launch { homePager.scrollToPage(0) }
                 if (fromButton && buttonSettings.animationsEnabled)
                     buttonTransition = GraceButtonTransition(target.action, origin, durationMillis = buttonSettings.appListAnimationDurationMs)
                 selectedLetter = null
                 overlay = null
                 drawerState.requestScrollToItem(0)
                 drawerOpen = true
+            }
+            GraceButtonAction.WidgetScreen -> {
+                if (uiState.settings.widgetScreen.enabled) {
+                    drawerOpen = false; selectedLetter = null; overlay = null; editingHome = false
+                    pageScope.launch { homePager.animateScrollToPage(1) }
+                } else overlay = LauncherOverlay.SettingsDestination("WidgetScreen")
             }
             GraceButtonAction.Agenda -> {
                 actions.refreshWeather()
@@ -960,6 +990,19 @@ internal fun LauncherScreen(
         val railLayout = alphabet.layout(maxHeight.value, model.letters.size + 1)
 
         CompositionLocalProvider(LocalHomeAnimationTarget provides true) {
+          HorizontalPager(
+            state = homePager, beyondViewportPageCount = 1,
+            userScrollEnabled = uiState.settings.widgetScreen.enabled &&
+                (uiState.settings.widgetScreen.swipeToOpen || homePager.currentPage == 1) &&
+                !drawerOpen && overlay == null && !editingHome && !editingWidgetScreen &&
+                buttonTransition == null && !systemActionAccess,
+            modifier = Modifier.fillMaxSize().testTag("home_pages")
+                .retainedPage(visible = !drawerOpen || drawerTransition != null || (overlay == null && backProgress.value > 0f))
+                .graphicsLayer { alpha = if (drawerTransition != null) 1f else 1f - drawerVisibility }
+                .graceReveal(drawerTransition, reveal = false)
+                .then(if (drawerTransition != null) Modifier.background(homeScrim) else Modifier).statusBarContentFade(),
+          ) { page ->
+           if (page == 0) {
             HomeScreen(
                 uiState = uiState,
                 topSpace = homeTop,
@@ -975,9 +1018,10 @@ internal fun LauncherScreen(
                 onWidgetMenu = { overlay = LauncherOverlay.HomeWidgetMenu },
                 onCustomWidgetMenu = { overlay = LauncherOverlay.CustomWidgetMenu },
                 editingLayout = editingHome,
-                widgetInputEnabled = !drawerOpen && overlay == null && buttonTransition == null && !systemActionAccess,
+                widgetInputEnabled = !drawerOpen && overlay == null && buttonTransition == null && !systemActionAccess &&
+                    homePager.settledPage == 0 && !homePager.isScrollInProgress,
                 onHomeGesture = { gesture, position ->
-                    if (!drawerOpen && overlay == null && !editingHome) {
+                    if (!drawerOpen && overlay == null && !editingHome && homePager.currentPage == 0 && !homePager.isScrollInProgress) {
                         val origin = GraceButtonOrigin(Rect(position.x - homeGestureRadius, position.y - homeGestureRadius,
                             position.x + homeGestureRadius, position.y + homeGestureRadius))
                         performGestureAction(uiState.settings.homeGestures.target(gesture), origin, fromButton = false)
@@ -993,11 +1037,19 @@ internal fun LauncherScreen(
                 onFolderDragEnd = endFolderDrag,
                 onMediaCommand = actions.controlMedia,
                 onDismissMedia = actions.dismissMedia,
-                modifier = Modifier.retainedPage(visible = !drawerOpen || drawerTransition != null || (overlay == null && backProgress.value > 0f))
-                    .graphicsLayer { alpha = if (drawerTransition != null) 1f else 1f - drawerVisibility }
-                    .graceReveal(drawerTransition, reveal = false)
-                    .then(if (drawerTransition != null) Modifier.background(homeScrim) else Modifier).statusBarContentFade(),
+                modifier = Modifier.fillMaxSize(),
             )
+           } else {
+            CompositionLocalProvider(LocalHomeAnimationTarget provides false) {
+            WidgetScreen(uiState, actions, statusBarHeight, bottomInset, editingWidgetScreen,
+                enabled = !drawerOpen && overlay == null && !systemActionAccess && buttonTransition == null &&
+                    homePager.settledPage == 1 && !homePager.isScrollInProgress,
+                onEditingChange = { editingWidgetScreen = it },
+                onEdit = { editingWidgetScreen = false; overlay = LauncherOverlay.SettingsDestination("WidgetScreenEditor") },
+                onLaunchApp = onLaunchApp, onAppDetails = { overlay = LauncherOverlay.AppDetails(it) })
+            }
+           }
+          }
         }
 
         // One complete list and one scroll state for both held and released
@@ -1032,7 +1084,14 @@ internal fun LauncherScreen(
                 .graceReveal(drawerTransition, reveal = true).statusBarContentFade(),
         )
 
+        // One persistent rail serves both home pages. Fade it out while paging,
+        // then restore each page's visibility without changing the hit-test node.
+        val pagingRailAlpha by animateFloatAsState(
+            if (homePager.isScrollInProgress || editingWidgetScreen) 0f else 1f,
+            tween(if (homePager.isScrollInProgress || editingWidgetScreen) 90 else 180), label = "pagingAlphabet",
+        )
         if (!editingHome) AlphabetRail(
+            enabled = !homePager.isScrollInProgress && !editingWidgetScreen,
             alphabet = alphabet,
             leftTouchEnabled = uiState.settings.listAppearance.leftAlphabet,
             letters = model.letters,
@@ -1054,11 +1113,13 @@ internal fun LauncherScreen(
                 }
             },
             modifier = Modifier.align(Alignment.TopEnd)
+                .graphicsLayer { alpha = pagingRailAlpha }
                 .graceReveal(drawerTransition.takeIf { uiState.settings.hideAlphabet }, reveal = true),
             onScrubFinished = finishScrubbing,
-            autoHide = uiState.settings.hideAlphabet && !drawerOpen,
+            // Widget screen always hides the idle glyphs; its edge touch areas stay active.
+            autoHide = (uiState.settings.hideAlphabet || homePager.currentPage == 1) && !drawerOpen,
         )
-        if ((!drawerOpen && editingHome) || uiState.settings.graceButton.isVisible(drawerOpen)) {
+        if (!editingWidgetScreen && ((!drawerOpen && editingHome) || uiState.settings.graceButton.isVisible(drawerOpen))) {
             val buttonBounds = uiState.settings.graceButton.layout.bounds(maxWidth.value, maxHeight.value,
                 statusBarHeight.value, bottomInset.value)
             GraceButton(settings = uiState.settings.graceButton, editing = editingHome && !drawerOpen,

@@ -98,6 +98,7 @@ fun AlphabetRail(
     alphabet: AlphabetAppearance? = null,
     topOffset: Dp = 0.dp,
     touchHeight: Dp = height,
+    enabled: Boolean = true,
 ) {
     if (letters.isEmpty()) return
     val appearance = LocalLauncherAppearance.current
@@ -116,6 +117,7 @@ fun AlphabetRail(
     val entries = remember(letters, includeHome) { if (includeHome) listOf<String?>(null) + letters else letters }
     val state = remember { ScrubState() }
     val currentOnSelect by rememberUpdatedState(onLetterSelected)
+    val inputEnabled by rememberUpdatedState(enabled)
     val currentOnScrubFinished by rememberUpdatedState(onScrubFinished)
     val haptics by rememberUpdatedState(LocalHapticFeedback.current)
     val density = LocalDensity.current
@@ -156,6 +158,7 @@ fun AlphabetRail(
     fun touchSurface(fromLeft: Boolean) = Modifier.pointerInput(entries, fromLeft) {
         awaitEachGesture {
             val down = awaitFirstDown()
+            if (!inputEnabled) return@awaitEachGesture
             val pointerId = down.id
             var change = down
             var previousIndex = -1
@@ -163,6 +166,7 @@ fun AlphabetRail(
             state.active = true
             try {
                 while (true) {
+                    if (!inputEnabled) break
                     if (!change.pressed) {
                         change.consume()
                         break
@@ -231,9 +235,11 @@ fun AlphabetRail(
                             contentDescription = description
                             role = Role.Button
                             onClick {
-                                currentOnSelect(letter)
-                                currentOnScrubFinished()
-                                true
+                                if (inputEnabled) {
+                                    currentOnSelect(letter)
+                                    currentOnScrubFinished()
+                                }
+                                inputEnabled
                             }
                         },
                     contentAlignment = Alignment.Center,

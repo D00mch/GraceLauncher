@@ -152,6 +152,7 @@ private val GraceButtonAction.labelRes: Int get() = when (this) {
     GraceButtonAction.Website -> R.string.grace_button_open_website
     GraceButtonAction.LockScreen -> R.string.grace_button_lock_screen
     GraceButtonAction.AppList -> R.string.grace_button_open_app_list
+    GraceButtonAction.WidgetScreen -> R.string.widget_screen_open
     GraceButtonAction.Notifications -> R.string.grace_button_notifications
     GraceButtonAction.QuickSettings -> R.string.grace_button_quick_settings
     GraceButtonAction.Assistant -> R.string.grace_button_assistant

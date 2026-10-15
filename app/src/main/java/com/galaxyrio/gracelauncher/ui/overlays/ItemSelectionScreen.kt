@@ -95,8 +95,8 @@ internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions,
 
 @Composable
 internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, actions: LauncherActions, onBack: () -> Unit,
-    header: (@Composable () -> Unit)? = null) {
-    val isFolder = owner.folderId != null
+    header: (@Composable () -> Unit)? = null, widgetScreen: Boolean = false) {
+    val isFolder = owner.folderId != null || widgetScreen
     var retry by remember { mutableIntStateOf(0) }
     val result by produceState(if (isFolder) ShortcutResult(ShortcutStatus.Ready) else actions.cachedShortcuts(owner) ?: ShortcutResult(ShortcutStatus.Loading),
         owner.key, uiState.hasShortcutAccess, retry, uiState.itemRevision) { if (!isFolder) value = actions.shortcuts(owner) }
@@ -126,7 +126,8 @@ internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, act
         return
     }
     ItemSelectionScreen(
-        title = stringResource(R.string.edit_app_popup, owner.label), tag = "popup_editor", selected = selected,
+        title = if (widgetScreen) stringResource(R.string.widget_screen_edit) else stringResource(R.string.edit_app_popup, owner.label),
+        tag = if (widgetScreen) "widget_screen_editor" else "popup_editor", selected = selected,
         apps = uiState.allApps.filterNot { it.key == owner.key }, enabled = ready,
         shortcuts = shortcuts.takeUnless { isFolder }, shortcutTitle = stringResource(R.string.popup_app_shortcuts, owner.label),
         header = header,
@@ -139,9 +140,17 @@ internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, act
         onRemove = { key -> actions.updatePopup(owner, shortcuts) { it.filterNot { item -> item.key == key } } },
         onReorder = { keys -> actions.updatePopup(owner, shortcuts) { current ->
             val byKey = current.associateBy { it.key }
-            keys.mapNotNull(byKey::get) + current.filterNot { it.key in keys }
+            val ordered = keys.mapNotNull(byKey::get) + current.filterNot { it.key in keys }
+            if (widgetScreen) ordered.map { it.copy(grid = it.grid?.copy(column = null, row = null)) } else ordered
         } }, onDone = onBack,
     )
+}
+
+@Composable
+internal fun WidgetScreenEditor(uiState: LauncherUiState, actions: LauncherActions, onBack: () -> Unit) {
+    val title = stringResource(R.string.widget_screen_title)
+    val owner = remember(title) { widgetScreenOwner(title) }
+    PopupEditorScreen(owner, uiState, actions, onBack, widgetScreen = true)
 }
 
 /** One full-screen editor for favorites and mixed pop-up contents. Search only filters All apps. */

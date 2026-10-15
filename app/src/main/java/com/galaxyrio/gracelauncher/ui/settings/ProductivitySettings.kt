@@ -132,6 +132,11 @@ internal fun ProductivitySettings(
                 SettingsActionItem(stringResource(R.string.settings_move_widget), null, 0, 1, "settings_move_widget",
                     leading = { LauncherIcon(LauncherSymbol.Move) }, onClick = actions.moveWidget)
             }
+            item { SettingsHeading(stringResource(R.string.settings_additional_screen)) }
+            item {
+                SettingsActionItem(stringResource(R.string.widget_screen_title), null, 0, 1, "settings_widget_screen",
+                    leading = { LauncherIcon(LauncherSymbol.Widgets) }) { navigate(SettingsPage.WidgetScreen) }
+            }
             item { SettingsHeading(stringResource(R.string.settings_app_organization)) }
             item {
                 SettingsActionItem(

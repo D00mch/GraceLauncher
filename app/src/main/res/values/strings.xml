@@ -678,4 +678,12 @@
     <string name="settings_folder_auto_hide">Automatically hide apps inside</string>
     <string name="settings_folder_auto_hide_summary">Hide current and future members from the app list. Manual hides are kept when apps leave this folder.</string>
     <string name="hidden_from_folder">Hidden by folder</string>
+    <string name="settings_additional_screen">Additional screen</string>
+    <string name="widget_screen_title">Widget screen</string>
+    <string name="widget_screen_enable">Enable widget screen</string>
+    <string name="widget_screen_swipe">Swipe left on home</string>
+    <string name="widget_screen_swipe_disabled">You can open this screen using a gesture or a Grace button action</string>
+    <string name="widget_screen_columns">Cells per row</string>
+    <string name="widget_screen_edit">Edit widget screen</string>
+    <string name="widget_screen_open">Open widget screen</string>
 </resources>

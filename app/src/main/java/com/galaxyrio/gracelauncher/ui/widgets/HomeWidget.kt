@@ -7,12 +7,14 @@ import android.os.Build
 import android.os.Bundle
 import android.util.SizeF
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -96,15 +98,28 @@ internal fun rememberHostedWidget(layout: HomeLayout): HostedWidget {
 internal fun HomeWidget(
     layout: HomeLayout, widget: HostedWidget, height: Int, editing: Boolean,
     enabled: Boolean, hapticsEnabled: Boolean, onLongPress: () -> Unit,
+    onDrag: ((Float, Float) -> Unit)? = null, onDragEnd: ((Boolean) -> Unit)? = null,
+    onDragStart: ((Float, Float) -> Unit)? = null,
 ) {
     val density = LocalDensity.current.density
     val latestLongPress by rememberUpdatedState(onLongPress)
+    val latestDragStart by rememberUpdatedState(onDragStart)
+    val latestDrag by rememberUpdatedState(onDrag)
+    val latestDragEnd by rememberUpdatedState(onDragEnd)
     var size by remember { mutableStateOf(IntSize.Zero) }
     var view by remember(layout.widgetId) { mutableStateOf<HomeWidgetHostView?>(null) }
     var creationFailed by remember(layout.widgetId, widget.info) { mutableStateOf(false) }
     val modifier = Modifier.fillMaxWidth().height(height.dp).onSizeChanged { size = it }
     if (widget.info == null || creationFailed) {
-        Surface(modifier.combinedClickable(enabled = enabled && !editing, onClick = onLongPress, onLongClick = onLongPress),
+        // A failed RemoteViews must still finish/cancel its grid drag. Other surfaces
+        // retain their existing tap/hold menu rather than entering a drag without UP.
+        val fallback = if (onDrag != null) modifier.pointerInput(layout.widgetId, enabled, editing) {
+            if (enabled && !editing) detectDragGesturesAfterLongPress(
+                onDragStart = { latestDragStart?.invoke(it.x, it.y) ?: latestLongPress() }, onDragEnd = { latestDragEnd?.invoke(false) },
+                onDragCancel = { latestDragEnd?.invoke(true) },
+            ) { change, amount -> change.consume(); latestDrag?.invoke(amount.x, amount.y) }
+        } else modifier.combinedClickable(enabled = enabled && !editing, onClick = onLongPress, onLongClick = onLongPress)
+        Surface(fallback,
             shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
             Text(stringResource(R.string.widget_unavailable), Modifier.padding(20.dp))
         }
@@ -119,10 +134,16 @@ internal fun HomeWidget(
             },
             update = {
                 it.onWidgetLongPress = { latestLongPress() }
+                it.onWidgetDragStart = if (onDragStart == null) null else { x, y -> latestDragStart?.invoke(x, y) }
+                it.onWidgetDrag = { x, y -> latestDrag?.invoke(x, y) }
+                it.onWidgetDragEnd = { cancelled -> latestDragEnd?.invoke(cancelled) }
                 it.interactionEnabled = enabled && !editing
                 it.hapticsEnabled = hapticsEnabled
             },
-            onRelease = { it.onWidgetLongPress = null; if (view === it) view = null },
+            onRelease = {
+                it.onWidgetLongPress = null; it.onWidgetDragStart = null; it.onWidgetDrag = null; it.onWidgetDragEnd = null
+                if (view === it) view = null
+            },
         )
     }
     LaunchedEffect(view, size, editing, density) {

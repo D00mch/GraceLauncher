@@ -643,4 +643,12 @@
     <string name="settings_folder_auto_hide">Nascondi automaticamente le app dentro</string>
     <string name="settings_folder_auto_hide_summary">Nascondi dall\'elenco delle app quelle già presenti e quelle che verranno aggiunte. Le app nascoste manualmente restano nascoste anche quando escono da questa cartella.</string>
     <string name="hidden_from_folder">Nascosta dalla cartella</string>
+    <string name="settings_additional_screen">Schermata aggiuntiva</string>
+    <string name="widget_screen_title">Schermata widget</string>
+    <string name="widget_screen_enable">Abilita schermata widget</string>
+    <string name="widget_screen_swipe">Scorri a sinistra sulla home</string>
+    <string name="widget_screen_swipe_disabled">Puoi aprire questa schermata con un gesto o un’azione del pulsante Grace</string>
+    <string name="widget_screen_columns">Celle per riga</string>
+    <string name="widget_screen_edit">Modifica schermata widget</string>
+    <string name="widget_screen_open">Apri schermata widget</string>
 </resources>
