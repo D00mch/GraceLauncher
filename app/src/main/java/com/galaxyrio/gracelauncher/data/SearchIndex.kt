@@ -2,6 +2,8 @@ package com.galaxyrio.gracelauncher.data
 
 import java.util.Locale
 
+private val cyrillicKs = Regex("кс", RegexOption.IGNORE_CASE)
+
 /** Shared local matching for app names and contact names. No remote search/index service. */
 internal class SearchQuery(val text: String, val fuzzy: Boolean) {
     val literal = text.trim().lowercase(Locale.ROOT)
@@ -13,6 +15,9 @@ internal class SearchQuery(val text: String, val fuzzy: Boolean) {
 internal class SearchName(val label: String) {
     private val literal = label.lowercase(Locale.ROOT)
     private val compact = compactSearchText(label)
+    // кс is normally "ks", but names such as Яндекс also use "x" in Latin.
+    // Keep that spelling as a search alias without changing the sort key or Latin names.
+    private val alternateCompact = label.replace(cyrillicKs, "x").takeIf { it != label }?.let(::compactSearchText)
     private val initials = buildString {
         var wordStart = true
         var previousLowercase = false
@@ -36,7 +41,13 @@ internal class SearchName(val label: String) {
             literal.contains(query.literal) -> 8
             else -> null
         }
-        val term = query.compact
+        return listOfNotNull(
+            compactScore(query.compact, compact),
+            alternateCompact?.let { compactScore(query.compact, it) },
+        ).minOrNull()
+    }
+
+    private fun compactScore(term: String, compact: String): Int? {
         return when {
             compact == term -> 0
             compact.startsWith(term) -> 2

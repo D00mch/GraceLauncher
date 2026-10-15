@@ -22,6 +22,7 @@ class LauncherSortingTest {
             "相机" to "X", "微信" to "W", "支付寶" to "Z",
             "カメラ" to "K", "카메라" to "K", "Камера" to "K", "Κάμερα" to "K",
             "Éditeur" to "E", "İstanbul" to "I", "Ｃａｍｅｒａ" to "C",
+            "Яндекс" to "Y", "Юла" to "Y", "Чат" to "C",
             "1Password" to "#",
         ).forEach { (label, section) -> assertEquals(label, section, sectionForLabel(label)) }
     }
@@ -35,5 +36,16 @@ class LauncherSortingTest {
         assertEquals(expected, apps.sortedWith(LauncherAppOrder).map { it.label })
         assertEquals(expected, AppListModel(apps).items.filterIsInstance<DrawerItem.App>().map { it.app.label })
         assertEquals("A", apps.first().copy(label = "Alipay").section)
+    }
+
+    @Test
+    fun russianAndEnglishInterleaveInBothTheModelAndAppOrder() {
+        val apps = listOf("Zoom", "Юла", "Alipay", "Яндекс", "Chrome", "Чат").mapIndexed { i, label ->
+            LauncherApp(ComponentName("example.sorting", "App$i"), label, null)
+        }
+        val expected = listOf("Alipay", "Чат", "Chrome", "Яндекс", "Юла", "Zoom")
+        assertEquals(expected, apps.sortedWith(LauncherAppOrder).map { it.label })
+        assertEquals(expected, AppListModel(apps).items.filterIsInstance<DrawerItem.App>().map { it.app.label })
+        assertEquals("Y", apps.first().copy(label = "Яндекс").section)
     }
 }

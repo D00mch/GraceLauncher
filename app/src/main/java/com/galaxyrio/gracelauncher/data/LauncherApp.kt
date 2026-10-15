@@ -53,6 +53,15 @@ val LauncherAlphabet: List<String> = ('A'..'Z').map(Char::toString) + "#"
 
 private val combiningMarks = Regex("\\p{Mn}+")
 private val spacing = Regex("\\s+")
+// ICU's generic Cyrillic rules lose digraphs after Latin-ASCII (я -> a, ч -> c).
+// Apply the Russian alphabet first, including on Android 9 where ICU is unavailable.
+private val russianLetters = mapOf(
+    'а' to "a", 'б' to "b", 'в' to "v", 'г' to "g", 'д' to "d", 'е' to "e", 'ё' to "yo",
+    'ж' to "zh", 'з' to "z", 'и' to "i", 'й' to "y", 'к' to "k", 'л' to "l", 'м' to "m",
+    'н' to "n", 'о' to "o", 'п' to "p", 'р' to "r", 'с' to "s", 'т' to "t", 'у' to "u",
+    'ф' to "f", 'х' to "kh", 'ц' to "ts", 'ч' to "ch", 'ш' to "sh", 'щ' to "shch",
+    'ъ' to "", 'ы' to "y", 'ь' to "", 'э' to "e", 'ю' to "yu", 'я' to "ya",
+)
 private val sortKeys = object : LinkedHashMap<String, String>(64, 0.75f, true) {
     override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > 512
 }
@@ -60,7 +69,11 @@ private val sortKeys = object : LinkedHashMap<String, String>(64, 0.75f, true) {
 /** One cached key drives both the A–Z section and the order within it. */
 @Synchronized
 fun appSortKey(label: String): String = sortKeys.getOrPut(label) {
-    val normalized = Normalizer.normalize(label.trim(), Normalizer.Form.NFKC)
+    val normalized = buildString {
+        for (character in Normalizer.normalize(label.trim(), Normalizer.Form.NFKC)) {
+            append(russianLetters[character.lowercaseChar()] ?: character)
+        }
+    }
     val romanized = when {
         normalized.all { it.code < 128 } -> normalized
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> RomanizedLabels.transform(normalized)
@@ -69,7 +82,7 @@ fun appSortKey(label: String): String = sortKeys.getOrPut(label) {
     val folded = Normalizer.normalize(romanized, Normalizer.Form.NFKD)
         .replace(combiningMarks, "").replace(spacing, "").lowercase(Locale.ROOT)
     // Android 9 has no public Transliterator. Its native Chinese index still
-    // supplies pinyin initials; other untransliterated scripts retain a letter
+    // supplies pinyin initials; remaining untransliterated scripts retain a letter
     // section instead of all being dumped into '#'. No hidden API or font table.
     if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P && folded.isNotEmpty() &&
         Character.UnicodeScript.of(folded.codePointAt(0)) == Character.UnicodeScript.HAN
@@ -85,7 +98,7 @@ private val legacyChineseIndex by lazy {
 
 @RequiresApi(Build.VERSION_CODES.Q)
 private object RomanizedLabels {
-    // Han uses pinyin; kana, Hangul, Cyrillic, Greek, etc. use ICU's script
+    // Han uses pinyin; kana, Hangul, remaining Cyrillic, Greek, etc. use ICU's script
     // transliterations. Latin-ASCII also handles accents, ligatures and stroke letters.
     private val transliterator = runCatching { Transliterator.getInstance("Any-Latin; Latin-ASCII") }.getOrNull()
     fun transform(label: String): String = transliterator?.transliterate(label) ?: label
