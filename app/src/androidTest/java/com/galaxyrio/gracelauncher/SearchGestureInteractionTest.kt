@@ -260,6 +260,9 @@ class SearchGestureInteractionTest {
                 }
             }
         }
+        if (appCount > 0) compose.waitUntil(5_000) {
+            compose.onAllNodesWithTag("app:${state.apps.first().key}").fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     /** Observe the real platform effect, retaining its drawing node and event handling. */

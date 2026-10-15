@@ -50,12 +50,38 @@ class LocalizedSearchUiTest {
                     LauncherActions(), {}, {}, {}, queryState = query)
             }
         }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("app:" + app.key).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("app:" + app.key).assertIsDisplayed()
         compose.onNodeWithText("Camera").assertDoesNotExist()
         compose.runOnIdle { query.edit { replace(0, length, "Ya") } }
         compose.onNodeWithTag("app:" + app.key).assertIsDisplayed()
         compose.runOnIdle { query.edit { replace(0, length, "Яндекс") } }
         compose.onNodeWithTag("app:" + app.key).assertIsDisplayed()
+    }
+
+    @Test fun mainSearchUpdatesAfterRenameRemovalAndHiddenAppChanges() {
+        var state by mutableStateOf(LauncherUiState(apps = listOf(app, other), isLoadingApps = false,
+            settings = LauncherSettings(search = SearchSettings(fuzzy = false, hiddenApps = false))))
+        val query = TextFieldState("Yandex")
+        compose.setContent {
+            GraceLauncherTheme(dynamicColor = false) {
+                AppSearchScreen(state, LauncherActions(), {}, {}, {}, queryState = query)
+            }
+        }
+        fun awaitApp() {
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("app:" + app.key).fetchSemanticsNodes().isNotEmpty() }
+        }
+        awaitApp()
+        compose.runOnIdle { state = state.copy(apps = listOf(app.copy(label = "Браузер"), other)) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Браузер").fetchSemanticsNodes().isNotEmpty() }
+        compose.runOnIdle { query.edit { replace(0, length, "Brauzer") } }
+        compose.onNodeWithTag("app:" + app.key).assertIsDisplayed()
+        compose.runOnIdle { state = state.copy(hiddenAppKeys = setOf(app.key)) }
+        compose.onNodeWithTag("app:" + app.key).assertDoesNotExist()
+        compose.runOnIdle { state = state.copy(settings = state.settings.copy(search = state.settings.search.copy(hiddenApps = true))) }
+        awaitApp()
+        compose.runOnIdle { state = state.copy(apps = listOf(other)) }
+        compose.onNodeWithTag("app:" + app.key).assertDoesNotExist()
     }
 
     @Test fun sharedAppSelectorRefreshesAliasesAfterRename() {

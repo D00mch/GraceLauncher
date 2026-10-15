@@ -147,6 +147,7 @@ class AppNotificationUiTest {
         compose.onNodeWithTag("launcher_fab").performClick()
         compose.onAllNodesWithTag("notification_arrow:app:${app.key}").assertCountEquals(0)
         compose.onNodeWithTag("app_search_query").performTextReplacement(app.label)
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("app:${app.key}").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("app:${app.key}").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(1, launchedApps); assertTrue(opened.isEmpty()) }
     }
