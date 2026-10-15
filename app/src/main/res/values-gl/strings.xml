@@ -508,7 +508,7 @@
     <string name="search_unnamed_contact">Contacto sen nome</string>
     <string name="search_files">Busca de ficheiros</string>
     <string name="search_fuzzy">Busca difusa</string>
-    <string name="search_fuzzy_summary">Facer coincidir variantes ortográficas e iniciais</string>
+    <string name="search_fuzzy_summary">Facer coincidir iniciais e letras non consecutivas</string>
     <string name="search_internet_setting">Busca en Internet</string>
     <string name="search_engine">Motor de busca</string>
     <string name="search_engine_google">Google</string>
@@ -663,4 +663,8 @@
     <string name="app_stack_expand">Expandir a pila de aplicacións</string>
     <string name="app_stack_collapse">Contraer a pila de aplicacións</string>
     <string name="app_stack_empty">Escolle aplicacións ou atallos a continuación.</string>
+    <string name="favorites_shortcuts_app_group">Atallos e grupo de aplicacións</string>
+    <string name="favorites_add_shortcut">Engadir atallo</string>
+    <string name="favorites_add_folder">Engadir cartafol</string>
+    <string name="favorites_add_app_stack">Engadir pila de aplicacións</string>
 </resources>
