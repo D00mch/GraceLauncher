@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.galaxyrio.gracelauncher.data.icons.isGraceButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -23,19 +24,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 
-/** A startup preview only. Live inventory always replaces it, including an empty result. */
-internal data class CachedLauncherApps(
-    val apps: List<LauncherApp>,
-    val shortcuts: List<LauncherApp>,
-    val folders: List<LauncherApp>,
-    val graceButton: LauncherApp?,
-) {
-    fun installed(components: Set<ComponentName>) = copy(
-        apps = apps.filter { it.componentName in components },
-        shortcuts = shortcuts.filter { it.componentName in components },
-    )
-}
-
 /** Rendered personal-profile rows survive process death without re-querying icon providers.
  * Read only after settings/items load, so hidden apps and profile protection still apply.
  * This disposable file is excluded from backup and is never a source of launcher settings.
@@ -43,46 +31,38 @@ internal data class CachedLauncherApps(
 internal class LauncherAppCache(context: Context) {
     private val file = AtomicFile(File(context.noBackupFilesDir, "launcher-apps.json"))
 
-    suspend fun load(key: String): CachedLauncherApps? = withContext(Dispatchers.IO) {
+    suspend fun load(key: String, installed: Set<ComponentName>): List<LauncherApp>? = withContext(Dispatchers.IO) {
         mutex.withLock {
             bestEffort(null) {
                 if (!file.baseFile.exists()) return@bestEffort null
                 val root = JSONObject(file.readFully().toString(Charsets.UTF_8))
-                if (root.getInt("version") != 1 || root.getString("key") != key) return@bestEffort null
+                if (root.getInt("version") != 2 || root.getString("key") != key) return@bestEffort null
                 val coroutine = currentCoroutineContext()
-                fun rows(name: String): List<LauncherApp> {
-                    val entries = root.getJSONArray(name)
-                    return List(entries.length()) { index ->
-                        coroutine.ensureActive()
-                        decode(entries.getJSONObject(index))
-                    }
-                }
-                CachedLauncherApps(rows("apps"), rows("shortcuts"), rows("folders"),
-                    root.optJSONObject("graceButton")?.let(::decode))
+                val entries = root.getJSONArray("apps")
+                List(entries.length()) { index ->
+                    coroutine.ensureActive()
+                    decode(entries.getJSONObject(index))
+                }.filter { it.folderId != null || it.isGraceButton || it.componentName in installed }
             }
         }
     }
 
-    suspend fun save(key: String, snapshot: CachedLauncherApps) = withContext(Dispatchers.IO) {
+    suspend fun save(key: String, apps: List<LauncherApp>) = withContext(Dispatchers.IO) {
         mutex.withLock {
             bestEffort(Unit) {
                 val coroutine = currentCoroutineContext()
-                fun rows(apps: List<LauncherApp>) = JSONArray().apply {
-                    apps.filter(::personal).forEach { app ->
-                        coroutine.ensureActive()
-                        put(encode(app))
-                    }
+                val entries = JSONArray()
+                apps.filter(::personal).distinctBy(LauncherApp::key).forEach { app ->
+                    coroutine.ensureActive()
+                    entries.put(encode(app))
                 }
-                val root = JSONObject().put("version", 1).put("key", key)
-                    .put("apps", rows(snapshot.apps)).put("shortcuts", rows(snapshot.shortcuts))
-                    .put("folders", rows(snapshot.folders))
-                snapshot.graceButton?.takeIf(::personal)?.let { root.put("graceButton", encode(it)) }
+                val root = JSONObject().put("version", 2).put("key", key).put("apps", entries)
                 val bytes = root.toString().toByteArray(Charsets.UTF_8)
-                currentCoroutineContext().ensureActive()
+                coroutine.ensureActive()
                 val stream = file.startWrite()
                 try {
                     stream.write(bytes)
-                    currentCoroutineContext().ensureActive()
+                    coroutine.ensureActive()
                     file.finishWrite(stream)
                 } catch (error: Exception) {
                     file.failWrite(stream)
