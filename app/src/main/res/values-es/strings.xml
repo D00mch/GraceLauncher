@@ -657,4 +657,18 @@
     <string name="widget_screen_columns">Celdas por fila</string>
     <string name="widget_screen_edit">Editar pantalla de widgets</string>
     <string name="widget_screen_open">Abrir pantalla de widgets</string>
+    <string name="list_names_neither">Ninguno</string>
+    <string name="list_names_in_folders">Aplicar también dentro de las carpetas</string>
+    <string name="app_stacks_title">Pilas de aplicaciones</string>
+    <string name="app_stack_create">Crear pila de aplicaciones</string>
+    <string name="app_stack_edit">Editar pila de aplicaciones</string>
+    <string name="app_stacks_empty">Aún no hay pilas de aplicaciones</string>
+    <string name="app_stack_name">Nombre de la pila de aplicaciones</string>
+    <string name="app_stack_rename">Renombrar pila de aplicaciones</string>
+    <string name="app_stack_placement">Mostrar pila de aplicaciones en</string>
+    <string name="app_stack_delete">Borrar pila de aplicaciones</string>
+    <string name="app_stack_delete_confirmation">¿Eliminar «%1$s»? Las aplicaciones que contiene permanecerán instaladas.</string>
+    <string name="app_stack_expand">Expandir pila de aplicaciones</string>
+    <string name="app_stack_collapse">Colapsar pila de aplicaciones</string>
+    <string name="app_stack_empty">Elige aplicaciones o accesos directos a continuación.</string>
 </resources>
