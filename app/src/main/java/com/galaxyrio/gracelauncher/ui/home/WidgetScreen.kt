@@ -186,24 +186,32 @@ internal fun WidgetScreen(
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.popup_add_new))
             }
-            grid.cells.forEach { cell ->
+            // Render identity is independent of row order. In particular, moving a native
+            // widget upward must not detach its AndroidView while it owns a touch stream.
+            // Keep the key outside visibility branches so animation state survives culling.
+            val renderCells = remember(grid.cells) { grid.cells.sortedBy { it.key } }
+            renderCells.forEach { cell -> key(cell.key) {
                 val entry = byKey[cell.key]
                 val dragging = grid.draggingKey == cell.key
                 val selected = grid.selectedKey == cell.key
-                val top = origin.y + cell.row * heightPx - grid.scroll
-                if (entry != null && (dragging || selected || (top + cell.size.rows * heightPx >= -heightPx && top <= viewportPx + heightPx))) key(cell.key) {
+                val destination = IntOffset((origin.x + cell.column * widthPx).roundToInt(), (origin.y + cell.row * heightPx).roundToInt())
+                val dragPosition = grid.dragPosition + origin
+                val target = if (dragging) IntOffset(dragPosition.x.roundToInt(), dragPosition.y.roundToInt()) else destination
+                val animated by animateIntOffsetAsState(target,
+                    if (dragging || (selected && grid.resizing)) snap() else spring(dampingRatio = .84f, stiffness = 380f), label = "gridReflow")
+                val scale by animateFloatAsState(if (dragging) 1.06f else 1f, spring(dampingRatio = .7f), label = "gridLift")
+                val position = if (dragging) dragPosition else if (grid.resizing && selected)
+                    Offset(destination.x.toFloat(), destination.y.toFloat()) else Offset(animated.x.toFloat(), animated.y.toFloat())
+                val width = cellWidth * cell.size.columns
+                val height = cellHeight * cell.size.rows
+                val top = position.y - grid.scroll
+                val destinationTop = destination.y - grid.scroll
+                fun inViewport(y: Float) = y + cell.size.rows * heightPx >= -heightPx && y <= viewportPx + heightPx
+                // Keep departing content until its animated position leaves the viewport,
+                // and create incoming content at the start of its move, not at the endpoint.
+                if (entry != null && (dragging || selected || inViewport(top) || inViewport(destinationTop))) {
                     val app = uiState.findItem(entry.key)
                     val hosted = entry.widget?.let { rememberHostedWidget(it) }
-                    val destination = IntOffset((origin.x + cell.column * widthPx).roundToInt(), (origin.y + cell.row * heightPx).roundToInt())
-                    val dragPosition = grid.dragPosition + origin
-                    val target = if (dragging) IntOffset(dragPosition.x.roundToInt(), dragPosition.y.roundToInt()) else destination
-                    val animated by animateIntOffsetAsState(target,
-                        if (dragging || (selected && grid.resizing)) snap() else spring(dampingRatio = .84f, stiffness = 380f), label = "gridReflow")
-                    val scale by animateFloatAsState(if (dragging) 1.06f else 1f, spring(dampingRatio = .7f), label = "gridLift")
-                    val position = if (dragging) dragPosition else if (grid.resizing && selected)
-                        Offset(destination.x.toFloat(), destination.y.toFloat()) else Offset(animated.x.toFloat(), animated.y.toFloat())
-                    val width = cellWidth * cell.size.columns
-                    val height = cellHeight * cell.size.rows
                     val label = app?.label ?: entry.widget?.widgetLabel ?: stringResource(R.string.popup_item_unavailable)
                     DisposableEffect(cell.key) { onDispose { iconCoordinates.remove(cell.key) } }
                     Box(Modifier.absoluteOffset { IntOffset(position.x.roundToInt(), (position.y - grid.scroll).roundToInt()) }
@@ -252,7 +260,7 @@ internal fun WidgetScreen(
                         }
                     }
                 }
-            }
+            } }
         }
         val deleteAlpha by animateFloatAsState(if (grid.draggingKey != null) 1f else 0f, label = "gridDelete")
         val deleteScale by animateFloatAsState(if (grid.overDelete) 1.08f else 1f, spring(dampingRatio = .75f), label = "gridDeleteHover")

@@ -158,6 +158,12 @@ internal fun ListAppearanceSettings(uiState: LauncherUiState, actions: LauncherA
                                     draft.leftAlphabet, 8, 9, "list_left_alphabet") { value -> change { it.copy(leftAlphabet = value) } }
                             }
                             item("misc") { SettingsHeading(stringResource(R.string.settings_misc)) }
+                            item("recently_installed") {
+                                SettingsToggleItem(stringResource(R.string.recently_installed), stringResource(R.string.settings_recently_installed_summary),
+                                    draft.showRecentlyInstalled, 0, 1, "settings_recently_installed", enabled = enabled) { value ->
+                                    change { it.copy(showRecentlyInstalled = value) }
+                                }
+                            }
                             item("alphabet") {
                                 SettingsToggleItem(stringResource(R.string.settings_hide_alphabet), stringResource(R.string.settings_hide_alphabet_summary),
                                     settings.hideAlphabet, 0, 3, "settings_hide_alphabet") { value -> actions.updateSettings { it.copy(hideAlphabet = value) } }

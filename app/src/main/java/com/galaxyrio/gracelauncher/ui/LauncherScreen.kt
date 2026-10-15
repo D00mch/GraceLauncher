@@ -557,7 +557,10 @@ internal fun LauncherScreen(
     val workApps = uiState.workProfileApps.filterNot { it.key in uiState.effectiveHiddenAppKeys }
     val privateApps = uiState.privateSpaceApps
     val recentFolderName = stringResource(R.string.recently_installed)
-    val recentFolder = remember(uiState.apps, recentFolderName) { uiState.recentlyInstalledFolder(recentFolderName) }
+    val recentFolder = remember(uiState.apps, recentFolderName, uiState.settings.listAppearance.recentlyInstalledName,
+        uiState.settings.listAppearance.showRecentlyInstalled) {
+        uiState.recentlyInstalledFolder(recentFolderName).takeIf { uiState.settings.listAppearance.showRecentlyInstalled }
+    }
     val model = remember(appListApps, uiState.folders, privateFolder, privateExpanded, privateApps, recentFolder, workFolder, workExpanded, workApps) {
         AppListModel(appListApps, uiState.folders, privateFolder, privateExpanded, privateApps, recentFolder, workFolder, workExpanded, workApps)
     }
@@ -1056,7 +1059,7 @@ internal fun LauncherScreen(
         // views. Content padding anchors headings without reserving a viewport.
         AppDrawerScreen(
             model = model,
-            folderApps = (uiState.folders + listOfNotNull(workFolder, privateFolder)).associate { it.id to uiState.folderItem(it) },
+            folderApps = (uiState.folders + listOfNotNull(workFolder, privateFolder, recentFolder)).associate { it.id to uiState.folderItem(it) },
             notifications = uiState.notifications,
             popupSettings = popupSettings,
             listState = drawerState,

@@ -184,6 +184,8 @@
     <string name="launcher_fab_description">Search apps. Touch and hold for settings.</string>
     <string name="drawer_folders">Folders</string>
     <string name="recently_installed">Recently Installed</string>
+    <string name="hide_recently_installed">Hide Recently Installed</string>
+    <string name="settings_recently_installed_summary">Show the 8 most recently installed apps in the app list</string>
     <string name="add_to_folder">Add to folder</string>
     <string name="create_app_folder">New folder in app list</string>
 

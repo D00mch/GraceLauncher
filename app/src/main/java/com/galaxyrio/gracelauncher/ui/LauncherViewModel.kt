@@ -141,6 +141,8 @@ data class LauncherUiState(
         ?: privateFolder.takeIf { it.key == key }?.let(::folderItem)
         ?: workFolder.takeIf { it.key == key }?.let(::folderItem)
         ?: folders.firstOrNull { it.key == key }?.let(::folderItem)
+        ?: folderApps.firstOrNull { it.key == key && it.folderId == RecentlyInstalledFolderId }
+            ?.let { folderItem(recentlyInstalledFolder(it.originalLabel)) }
         ?: graceButtonApp?.takeIf { it.key == key }
 
     val privateFolder: LauncherFolder get() = settings.privateSpace.folder(privateSpaceApps)
@@ -164,7 +166,8 @@ data class LauncherUiState(
         .distinctBy { it.userSerial to it.packageName }.take(8).toList()
 
     fun recentlyInstalledFolder(name: String) = LauncherFolder(
-        RecentlyInstalledFolderId, name, recentlyInstalledApps.map(LauncherApp::key), FolderPlacement.AppList,
+        RecentlyInstalledFolderId, settings.listAppearance.recentlyInstalledName ?: name,
+        recentlyInstalledApps.map(LauncherApp::key), FolderPlacement.AppList,
     )
 
     fun folderItem(folder: LauncherFolder): LauncherApp = ((if (folder.id == PrivateSpaceFolderId) privateFolderApp
@@ -447,7 +450,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     val shown = snapshot.shortcuts.filter { it.showInAppList }.map { it.itemKey }.toSet()
                     val displayedApps = (apps.map { decorate(it) } + shortcuts.filter { it.key in shown })
                         .sortedWith(LauncherAppOrder)
-                    val folderApps = _uiState.value.folders.map { folder ->
+                    // Keep this virtual folder out of the editable folder table, but
+                    // render its saved icon through the same item-icon pipeline.
+                    val recentFolder = LauncherFolder(RecentlyInstalledFolderId,
+                        getApplication<Application>().getString(com.galaxyrio.gracelauncher.R.string.recently_installed),
+                        emptyList(), FolderPlacement.AppList)
+                    val folderApps = (_uiState.value.folders + recentFolder).map { folder ->
                         itemIcons.apply(folder.asApp(), snapshot.icons[folder.key], iconSettings)
                     }
                     val privateFolderApp = itemIcons.apply(_uiState.value.privateFolder.asApp(), snapshot.icons[PrivateSpaceFolderKey], iconSettings)
@@ -657,6 +665,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun openNotification(key: String, revision: Long): Boolean = appNotifications.open(getApplication(), key, revision)
 
     fun renameApp(app: LauncherApp, label: String) {
+        if (app.folderId == RecentlyInstalledFolderId) {
+            updateSettings { it.copy(listAppearance = it.listAppearance.copy(
+                recentlyInstalledName = label.trim().takeIf(String::isNotEmpty))) }
+            return
+        }
         if (app.folderId == WorkProfileFolderId) {
             updateSettings { it.copy(workProfile = it.workProfile.copy(name = label.trim().ifBlank { WorkProfileDefaultName })) }
             return

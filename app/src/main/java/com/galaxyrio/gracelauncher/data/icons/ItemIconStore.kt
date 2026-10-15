@@ -101,6 +101,7 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
                 val glyph = ContextCompat.getDrawable(context, when (app.folderId) {
                     PrivateSpaceFolderId -> R.drawable.ms_lock
                     com.galaxyrio.gracelauncher.data.WorkProfileFolderId -> R.drawable.ms_work
+                    com.galaxyrio.gracelauncher.data.RecentlyInstalledFolderId -> R.drawable.ms_history_2
                     else -> R.drawable.ms_folder
                 })
                     ?.mutate() ?: return@withContext null

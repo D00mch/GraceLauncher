@@ -55,4 +55,14 @@ class WidgetGridLayoutTest {
         assertEquals(2, narrower.first { it.key == "w" }.size.columns)
         assertFits(narrower, 2)
     }
+
+    @Test fun movingAFullWidthWidgetUpSurvivesCompactionAndReload() {
+        val original = listOf(cell("above", 0, 0, 4, 3), cell("moving", 0, 3, 4, 4), cell("below", 0, 7, 4, 3))
+        val moved = compactWidgetRows(moveWidgetGrid(original, cell("moving", 0, 0, 4, 4), 4))
+        assertEquals(cell("moving", 0, 0, 4, 4), moved.first { it.key == "moving" })
+        assertEquals(cell("above", 0, 4, 4, 3), moved.first { it.key == "above" })
+        assertFits(moved, 4)
+        val saved = moved.mapIndexed { index, cell -> PopupItem(cell.key, HomeLayout(widgetId = index), cell.placement()) }
+        assertEquals(moved, restoreWidgetGrid(saved, 4, emptyMap()))
+    }
 }

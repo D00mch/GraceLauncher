@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.sp
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.LauncherFolder
 import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
-import com.galaxyrio.gracelauncher.data.RecentlyInstalledFolderId
 import com.galaxyrio.gracelauncher.data.notifications.AppNotification
 import com.galaxyrio.gracelauncher.data.ShortcutsFoldersSettings
 import com.galaxyrio.gracelauncher.R
@@ -171,7 +170,7 @@ fun AppDrawerScreen(
                         app = folderApps[item.folder.id] ?: item.folder.asApp(),
                         highlighted = highlightedAppKey == item.folder.key,
                         onOpen = { onOpenFolder(item.folder, it) },
-                        onLongClick = if (item.folder.id == RecentlyInstalledFolderId) null else ({ onEditFolder(item.folder) }),
+                        onLongClick = { onEditFolder(item.folder) },
                         onDrag = { bounds, expanded -> onFolderDrag(item.folder, bounds, expanded) },
                         onDragEnd = onFolderDragEnd,
                         onSwipeLeft = rowGestures.onOpenFirst?.let { open -> { bounds ->

@@ -52,12 +52,16 @@ data class ListAppearance(
     /** null keeps the automatic, contrast-aware primary tint. */
     val wallpaperDimColor: IconColor? = null,
     val alphabet: AlphabetAppearance = AlphabetAppearance(),
+    val showRecentlyInstalled: Boolean = true,
+    /** null uses the localized name of the built-in folder. */
+    val recentlyInstalledName: String? = null,
 ) {
     fun showNames(favorites: Boolean) = names == AppNameVisibility.Both ||
         names == if (favorites) AppNameVisibility.Favorites else AppNameVisibility.AppList
 
     fun normalized() = copy(appSpacing = appSpacing.coerceIn(0, 64), sidePadding = sidePadding.coerceIn(8, 80),
-        iconNameGap = iconNameGap.coerceIn(0, 64), fontSize = fontSize.coerceIn(10, 32), alphabet = alphabet.normalized())
+        iconNameGap = iconNameGap.coerceIn(0, 64), fontSize = fontSize.coerceIn(10, 32), alphabet = alphabet.normalized(),
+        recentlyInstalledName = recentlyInstalledName?.trim()?.takeIf(String::isNotEmpty))
 
     fun encode(): String = normalized().let { safe -> JSONObject().apply {
         put("appSpacing", safe.appSpacing); put("sidePadding", safe.sidePadding); put("iconNameGap", safe.iconNameGap)
@@ -66,6 +70,8 @@ data class ListAppearance(
         put("wallpaperDimColor", safe.wallpaperDimColor?.json())
         put("alphabet", safe.alphabet.json())
         put("names", safe.names.name); put("leftAlphabet", safe.leftAlphabet)
+        put("showRecentlyInstalled", safe.showRecentlyInstalled)
+        put("recentlyInstalledName", safe.recentlyInstalledName ?: JSONObject.NULL)
     }.toString() }
 
     companion object {
@@ -81,6 +87,8 @@ data class ListAppearance(
                 names = AppNameVisibility.entries.firstOrNull { it.name == value.optString("names") }
                     ?: if (hideFavoriteNames) AppNameVisibility.AppList else AppNameVisibility.Both,
                 leftAlphabet = value.optBoolean("leftAlphabet", true),
+                showRecentlyInstalled = value.optBoolean("showRecentlyInstalled", true),
+                recentlyInstalledName = if (value.isNull("recentlyInstalledName")) null else value.optString("recentlyInstalledName"),
             ).normalized()
         }.getOrElse { ListAppearance() }
     }

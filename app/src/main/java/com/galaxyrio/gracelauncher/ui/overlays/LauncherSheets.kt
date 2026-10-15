@@ -174,6 +174,7 @@ internal fun LauncherOverlays(
             isPrivate -> uiState.privateFolder.takeIf { uiState.privateContentVisible }
             isWork -> uiState.workFolder.takeIf { uiState.workProfiles.isNotEmpty() }
             isRecent -> uiState.recentlyInstalledFolder(stringResource(R.string.recently_installed))
+                .takeIf { uiState.settings.listAppearance.showRecentlyInstalled }
             else -> uiState.folders.firstOrNull { it.id == overlay.folder.id }
         }
         if (folder == null) {
@@ -192,7 +193,7 @@ internal fun LauncherOverlays(
             uiState = uiState, actions = actions,
             onDetails = { member ->
                 if ((isPrivate || isWork) && member.folderId == folder.id) edit?.invoke()
-                else if (member.folderId != RecentlyInstalledFolderId) onChange(LauncherOverlay.AppDetails(member,
+                else onChange(LauncherOverlay.AppDetails(member,
                     if (member.folderId == null && !isRecent && !isWork && !(isPrivate && uiState.settings.privateSpace.exposesApps)) uiState.folderItem(folder) else null,
                     returnTo = overlay.takeIf { isPrivate || isRecent || isWork }))
             },
@@ -244,7 +245,9 @@ internal fun LauncherOverlays(
           Box(Modifier.fillMaxWidth().heightIn(max = maxHeight)) {
             when (overlay) {
                 is LauncherOverlay.AppDetails -> AppDetailsSheet(
-                    app = uiState.findItem(overlay.app.key) ?: overlay.app,
+                    app = if (overlay.app.folderId == RecentlyInstalledFolderId)
+                        uiState.folderItem(uiState.recentlyInstalledFolder(stringResource(R.string.recently_installed)))
+                        else uiState.findItem(overlay.app.key) ?: overlay.app,
                     actions = actions, onChange = onChange, popupOwner = overlay.popupOwner, uiState = uiState,
                     returnTo = overlay.returnTo,
                     fromAppList = overlay.fromAppList,
@@ -280,7 +283,9 @@ private fun AppDetailsSheet(app: LauncherApp, actions: LauncherActions, onChange
     var rename by remember(app.key) { mutableStateOf(false) }
     var confirmDelete by remember(app.key) { mutableStateOf(false) }
     var placement by remember(app.key) { mutableStateOf(false) }
-    val folder = uiState.folders.firstOrNull { it.id == app.folderId }
+    val isRecent = app.folderId == RecentlyInstalledFolderId
+    val folder = if (isRecent) uiState.recentlyInstalledFolder(stringResource(R.string.recently_installed))
+        else uiState.folders.firstOrNull { it.id == app.folderId }
     if (app.folderId != null && folder == null) {
         LaunchedEffect(app.key) { onChange(null) }
         return
@@ -300,33 +305,40 @@ private fun AppDetailsSheet(app: LauncherApp, actions: LauncherActions, onChange
                 fontSize = 25.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         val owner = popupOwner?.let { uiState.findItem(it.key) ?: it } ?: app
-        if (app.shortcut != null) {
-            val shown = app.key in uiState.shownShortcutKeys
-            PanelAction(LauncherSymbol.Apps, stringResource(R.string.popup_show_in_app_list), "show_in_app_list",
-                iconColumnWidth = DetailsIconColumnWidth, iconTextSpacing = DetailsIconTextSpacing,
-                trailing = { Switch(shown, onCheckedChange = null) }) { actions.showShortcutInAppList(app, !shown) }
-        }
         val privateRestricted = app.isPrivateSpace && !uiState.settings.privateSpace.exposesApps
-        if (!privateRestricted) DetailsAction(LauncherSymbol.Star, stringResource(R.string.edit_favorites), "edit_favorites") {
-            onChange(LauncherOverlay.Favorites(initialAppKey = app.key.takeIf { fromAppList && folder == null }))
-        }
-        if (folder != null) {
-            DetailsAction(LauncherSymbol.Folder, stringResource(R.string.settings_folder_placement)) { placement = true }
-            DetailsAction(LauncherSymbol.Delete, stringResource(R.string.settings_folder_delete), "folder_delete") { confirmDelete = true }
-        } else {
-            DetailsAction(LauncherSymbol.Info, stringResource(R.string.app_info)) { onChange(null); actions.appInfo(app) }
-            if (!privateRestricted) {
-                DetailsAction(LauncherSymbol.Hourglass, stringResource(R.string.screen_time)) { onChange(null); actions.screenTime(app) }
-                DetailsAction(LauncherSymbol.Folder, stringResource(R.string.add_to_folder)) { onChange(LauncherOverlay.Categories(app, fromAppList)) }
+        if (isRecent) {
+            DetailsAction(LauncherSymbol.VisibilityOff, stringResource(R.string.hide_recently_installed), "hide_recently_installed") {
+                actions.updateSettings { it.copy(listAppearance = it.listAppearance.copy(showRecentlyInstalled = false)) }
+                onChange(null)
             }
-            if (app.shortcut == null) DetailsAction(LauncherSymbol.Delete, stringResource(R.string.uninstall)) { onChange(null); actions.uninstall(app) }
+        } else {
+            if (app.shortcut != null) {
+                val shown = app.key in uiState.shownShortcutKeys
+                PanelAction(LauncherSymbol.Apps, stringResource(R.string.popup_show_in_app_list), "show_in_app_list",
+                    iconColumnWidth = DetailsIconColumnWidth, iconTextSpacing = DetailsIconTextSpacing,
+                    trailing = { Switch(shown, onCheckedChange = null) }) { actions.showShortcutInAppList(app, !shown) }
+            }
+            if (!privateRestricted) DetailsAction(LauncherSymbol.Star, stringResource(R.string.edit_favorites), "edit_favorites") {
+                onChange(LauncherOverlay.Favorites(initialAppKey = app.key.takeIf { fromAppList && folder == null }))
+            }
+            if (folder != null) {
+                DetailsAction(LauncherSymbol.Folder, stringResource(R.string.settings_folder_placement)) { placement = true }
+                DetailsAction(LauncherSymbol.Delete, stringResource(R.string.settings_folder_delete), "folder_delete") { confirmDelete = true }
+            } else {
+                DetailsAction(LauncherSymbol.Info, stringResource(R.string.app_info)) { onChange(null); actions.appInfo(app) }
+                if (!privateRestricted) {
+                    DetailsAction(LauncherSymbol.Hourglass, stringResource(R.string.screen_time)) { onChange(null); actions.screenTime(app) }
+                    DetailsAction(LauncherSymbol.Folder, stringResource(R.string.add_to_folder)) { onChange(LauncherOverlay.Categories(app, fromAppList)) }
+                }
+                if (app.shortcut == null) DetailsAction(LauncherSymbol.Delete, stringResource(R.string.uninstall)) { onChange(null); actions.uninstall(app) }
+            }
         }
         DetailsAction(LauncherSymbol.Chevron, stringResource(R.string.advanced), "advanced", iconRotation = advancedRotation) { advanced = !advanced }
         AnimatedVisibility(advanced) {
             Column {
                 DetailsAction(LauncherSymbol.Edit, renameTitle) { rename = true }
                 DetailsAction(LauncherSymbol.DesignServices, stringResource(R.string.icon_designer_title)) { onChange(LauncherOverlay.IconDesigner(app, popupOwner, returnTo, fromAppList)) }
-                if (!privateRestricted) DetailsAction(LauncherSymbol.Outbound, stringResource(R.string.edit_app_popup, owner.label), "edit_popup") {
+                if (!isRecent && !privateRestricted) DetailsAction(LauncherSymbol.Outbound, stringResource(R.string.edit_app_popup, owner.label), "edit_popup") {
                     onChange(owner.folderId?.let { LauncherOverlay.FolderSettings(it) } ?: LauncherOverlay.EditPopup(owner, fromAppList))
                 }
                 if (folder == null) {
@@ -352,7 +364,7 @@ private fun AppDetailsSheet(app: LauncherApp, actions: LauncherActions, onChange
     if (rename) TextEntryDialog(
         title = renameTitle, initial = app.label,
         onDismiss = { rename = false }, onSave = { actions.rename(app, it); rename = false },
-        onReset = if (folder == null) ({ actions.rename(app, ""); rename = false }) else null,
+        onReset = if (folder == null || isRecent) ({ actions.rename(app, ""); rename = false }) else null,
     )
     if (placement && folder != null) FolderPlacementDialog(folder.placement, folder.appListAtBottom, { placement = false }) { selected, atBottom ->
         actions.updateFolder(folder.id, null, selected, atBottom); placement = false

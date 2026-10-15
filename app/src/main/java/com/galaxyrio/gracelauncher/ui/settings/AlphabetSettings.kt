@@ -37,7 +37,6 @@ import com.galaxyrio.gracelauncher.ui.LauncherActions
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.AlphabetRail
 import com.galaxyrio.gracelauncher.ui.drawer.AppListModel
-import com.galaxyrio.gracelauncher.ui.drawer.GraceSection
 import com.galaxyrio.gracelauncher.ui.theme.LocalFontLibrary
 import com.galaxyrio.gracelauncher.ui.theme.LocalLauncherAppearance
 import com.galaxyrio.gracelauncher.ui.theme.rememberLauncherAppearance
@@ -220,9 +219,9 @@ private fun rememberAlphabetPreviewLetters(uiState: LauncherUiState): List<Strin
     val workFolder = uiState.workFolder.takeIf { settings.workProfile.enabled && uiState.workProfiles.isNotEmpty() &&
         settings.workProfile.display != PrivateSpaceDisplay.NormalApp && profilesReady }
     val apps = uiState.appListApps
-    return remember(apps, uiState.folders, privateFolder, workFolder) {
-        val actual = AppListModel(apps, uiState.folders, privateFolder, workFolder = workFolder).letters
-        // The real drawer always has Recently Installed in the Grace section.
-        (actual + GraceSection).distinct()
+    val recentFolder = uiState.recentlyInstalledFolder(stringResource(R.string.recently_installed))
+        .takeIf { settings.listAppearance.showRecentlyInstalled }
+    return remember(apps, uiState.folders, privateFolder, workFolder, recentFolder) {
+        AppListModel(apps, uiState.folders, privateFolder, recentlyInstalledFolder = recentFolder, workFolder = workFolder).letters
     }
 }
