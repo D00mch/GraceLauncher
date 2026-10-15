@@ -670,4 +670,16 @@
     <string name="widget_screen_columns">每行格子数</string>
     <string name="widget_screen_edit">编辑小组件页面</string>
     <string name="widget_screen_open">打开小组件页面</string>
+    <string name="app_stacks_title">应用堆</string>
+    <string name="app_stack_create">创建应用堆</string>
+    <string name="app_stack_edit">编辑应用堆</string>
+    <string name="app_stacks_empty">还没有应用堆</string>
+    <string name="app_stack_name">应用堆名称</string>
+    <string name="app_stack_rename">重命名应用堆</string>
+    <string name="app_stack_placement">应用堆显示位置</string>
+    <string name="app_stack_delete">删除应用堆</string>
+    <string name="app_stack_delete_confirmation">删除“%1$s”？内部应用将保持安装。</string>
+    <string name="app_stack_expand">展开应用堆</string>
+    <string name="app_stack_collapse">收起应用堆</string>
+    <string name="app_stack_empty">选择下方的应用或快捷方式。</string>
 </resources>

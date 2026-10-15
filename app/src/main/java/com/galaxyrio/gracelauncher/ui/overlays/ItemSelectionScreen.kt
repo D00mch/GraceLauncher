@@ -40,6 +40,7 @@ import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
 import com.galaxyrio.gracelauncher.ui.components.LauncherSymbol
 import com.galaxyrio.gracelauncher.ui.components.ShortcutPickerScreen
 import com.galaxyrio.gracelauncher.ui.settings.FavoriteFoldersScreen
+import com.galaxyrio.gracelauncher.ui.settings.AppStackPickerScreen
 import com.galaxyrio.gracelauncher.ui.settings.SettingsScaffold
 import com.galaxyrio.gracelauncher.ui.widgets.WidgetPreview
 import kotlinx.coroutines.isActive
@@ -75,6 +76,11 @@ internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions,
     }
     var choosingShortcut by rememberSaveable { mutableStateOf(false) }
     var choosingFolders by rememberSaveable { mutableStateOf(false) }
+    var choosingStacks by rememberSaveable { mutableStateOf(false) }
+    if (choosingStacks) {
+        FavoriteFoldersScreen(uiState, actions, appStacks = true) { choosingStacks = false }
+        return
+    }
     if (choosingFolders) {
         FavoriteFoldersScreen(uiState, actions) { choosingFolders = false }
         return
@@ -90,6 +96,7 @@ internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions,
         onToggle = onToggle, onRemove = { key -> uiState.findItem(key)?.let(onToggle) }, onReorder = onReorder, onDone = onDone,
         onAddShortcut = { choosingShortcut = true },
         onAddFolder = { choosingFolders = true },
+        onAddStack = { choosingStacks = true },
     )
 }
 
@@ -97,6 +104,7 @@ internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions,
 internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, actions: LauncherActions, onBack: () -> Unit,
     header: (@Composable () -> Unit)? = null, widgetScreen: Boolean = false) {
     val isFolder = owner.folderId != null || widgetScreen
+    val isStack = uiState.folders.any { it.id == owner.folderId && it.isAppStack }
     var retry by remember { mutableIntStateOf(0) }
     val result by produceState(if (isFolder) ShortcutResult(ShortcutStatus.Ready) else actions.cachedShortcuts(owner) ?: ShortcutResult(ShortcutStatus.Loading),
         owner.key, uiState.hasShortcutAccess, retry, uiState.itemRevision) { if (!isFolder) value = actions.shortcuts(owner) }
@@ -110,6 +118,15 @@ internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, act
     val ready = !uiState.isLoadingSettings && !uiState.settingsLoadFailed &&
         (uiState.popups.containsKey(owner.key) || result.status == ShortcutStatus.Ready || result.status == ShortcutStatus.DefaultLauncherRequired)
     var choosingShortcut by rememberSaveable(owner.key) { mutableStateOf(false) }
+    var choosingStacks by rememberSaveable(owner.key) { mutableStateOf(false) }
+    if (choosingStacks) {
+        AppStackPickerScreen(uiState, actions, entries.map { it.key }.toSet(), { choosingStacks = false }) { app ->
+            actions.updatePopup(owner, shortcuts) { current ->
+                if (current.any { it.key == app.key }) current.filterNot { it.key == app.key } else current + PopupItem(app.key)
+            }
+        }
+        return
+    }
     var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     if (choosingShortcut) {
@@ -126,13 +143,15 @@ internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, act
         return
     }
     ItemSelectionScreen(
-        title = if (widgetScreen) stringResource(R.string.widget_screen_edit) else stringResource(R.string.edit_app_popup, owner.label),
+        title = if (widgetScreen) stringResource(R.string.widget_screen_edit) else if (isStack) stringResource(R.string.app_stack_edit) else stringResource(R.string.edit_app_popup, owner.label),
         tag = if (widgetScreen) "widget_screen_editor" else "popup_editor", selected = selected,
+        emptyMessage = if (isStack) stringResource(R.string.app_stack_empty) else null,
         apps = uiState.allApps.filterNot { it.key == owner.key }, enabled = ready,
         shortcuts = shortcuts.takeUnless { isFolder }, shortcutTitle = stringResource(R.string.popup_app_shortcuts, owner.label),
         header = header,
         shortcutStatus = result.status, onRetry = { retry++ }, onRequestAccess = actions.requestDefaultHome,
-        onAddWidget = { actions.addPopupWidget(owner, shortcuts) },
+        onAddWidget = if (isStack) null else ({ actions.addPopupWidget(owner, shortcuts) }),
+        onAddStack = if (isFolder && !isStack) ({ choosingStacks = true }) else null,
         onAddShortcut = { choosingShortcut = true },
         onToggle = { app -> actions.updatePopup(owner, shortcuts) { current ->
             if (current.any { it.key == app.key }) current.filterNot { it.key == app.key } else current + PopupItem(app.key)
@@ -162,9 +181,11 @@ private fun ItemSelectionScreen(
     onRetry: () -> Unit = {}, onRequestAccess: () -> Unit = {}, onAddWidget: (() -> Unit)? = null,
     onAddShortcut: (() -> Unit)? = null,
     onAddFolder: (() -> Unit)? = null,
+    onAddStack: (() -> Unit)? = null,
     header: (@Composable () -> Unit)? = null,
     reorderOnly: Boolean = false,
     loading: Boolean = false,
+    emptyMessage: String? = null,
 ) {
     val selectedKeys = selected.map { it.key }
     val selectedEntries = selected.associateBy { it.key }
@@ -203,7 +224,7 @@ private fun ItemSelectionScreen(
             item(key = "selected_header", contentType = "header") { SelectionHeading(stringResource(R.string.favorites_selected), "${tag}_selected") }
             if (loading) item(key = "loading") { LinearProgressIndicator(Modifier.fillMaxWidth().padding(8.dp)) }
             if (!loading && reorder.keys.isEmpty()) item(key = "empty") {
-                Text(stringResource(if (reorderOnly) R.string.private_space_empty else if (onAddWidget == null) R.string.favorites_empty else R.string.popup_empty), Modifier.padding(8.dp),
+                Text(emptyMessage ?: stringResource(if (reorderOnly) R.string.private_space_empty else if (onAddWidget == null) R.string.favorites_empty else R.string.popup_empty), Modifier.padding(8.dp),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             items(reorder.keys.mapNotNull(selectedEntries::get), key = { FavoritesReorderState.itemKey(it.key) }, contentType = { if (it.widget == null) "selected" else "widget" }) { entry ->
@@ -283,6 +304,12 @@ private fun ItemSelectionScreen(
                     SelectionHeading(stringResource(R.string.settings_folders), "${tag}_folders")
                 }
                 item(key = "add_folder") { AddSelectionContent("${tag}_add_folder", enabled, onAddFolder) }
+            }
+            if (onAddStack != null) {
+                item(key = "stacks_header", contentType = "header") {
+                    SelectionHeading(stringResource(R.string.app_stacks_title), "${tag}_stacks")
+                }
+                item(key = "add_stack") { AddSelectionContent("${tag}_add_stack", enabled, onAddStack) }
             }
             if (!reorderOnly) item(key = "all_header", contentType = "header") {
                 SelectionHeading(stringResource(R.string.favorites_all_apps), "${tag}_all_apps")

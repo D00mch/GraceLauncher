@@ -153,7 +153,7 @@ fun AppIcon(app: LauncherApp, modifier: Modifier = Modifier, size: Dp = 38.dp, a
                     PrivateSpaceFolderId -> LauncherSymbol.Lock
                     WorkProfileFolderId -> LauncherSymbol.Work
                     RecentlyInstalledFolderId -> LauncherSymbol.History2
-                    else -> LauncherSymbol.Folder
+                    else -> if (app.isAppStack) LauncherSymbol.Steppers else LauncherSymbol.Folder
                 })
             }
             else -> {

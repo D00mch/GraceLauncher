@@ -55,7 +55,7 @@ internal fun restoreWidgetGrid(entries: List<PopupItem>, columns: Int, sizes: Ma
     val ordered = entries.distinctBy { it.key }.sortedBy { it.grid?.row == null || it.grid.column == null }
     for (entry in ordered) {
         val saved = entry.grid
-        val requested = if (entry.widget == null) WidgetGridSize() else
+        val requested = if (entry.widget == null) sizes[entry.key] ?: WidgetGridSize() else
             saved?.let { WidgetGridSize(it.columns, it.rows) } ?: sizes[entry.key] ?: WidgetGridSize(2, 2)
         val size = WidgetGridSize(requested.columns.coerceIn(1, width), requested.rows.coerceIn(1, 20))
         val cell = WidgetGridCell(entry.key, (saved?.column ?: 0).coerceIn(0, width - size.columns),

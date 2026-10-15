@@ -124,6 +124,7 @@ import com.galaxyrio.gracelauncher.data.weather.BreezyWeatherRepository
 import com.galaxyrio.gracelauncher.ui.overlays.ShortcutRevealState
 import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
 import com.galaxyrio.gracelauncher.ui.components.LauncherSymbol
+import com.galaxyrio.gracelauncher.ui.components.AppStack
 import com.galaxyrio.gracelauncher.ui.drawer.AppDrawerScreen
 import com.galaxyrio.gracelauncher.ui.drawer.AppListModel
 import com.galaxyrio.gracelauncher.ui.home.HomeScreen
@@ -842,7 +843,7 @@ internal fun LauncherScreen(
         when (it.id) {
             PrivateSpaceFolderId -> editPrivateSpace()
             WorkProfileFolderId -> overlay = LauncherOverlay.SettingsDestination("WorkProfileEditor")
-            else -> overlay = LauncherOverlay.AppDetails(uiState.folderItem(it))
+            else -> overlay = if (it.isAppStack) LauncherOverlay.FolderSettings(it.id) else LauncherOverlay.AppDetails(uiState.folderItem(it))
         }
     }
     val dragFolder: (LauncherFolder, Rect, Boolean) -> Unit = { folder, bounds, expanded ->
@@ -1061,6 +1062,10 @@ internal fun LauncherScreen(
             model = model,
             folderApps = (uiState.folders + listOfNotNull(workFolder, privateFolder, recentFolder)).associate { it.id to uiState.folderItem(it) },
             notificationFor = { uiState.notificationsFor(it, expanded = false).firstOrNull() },
+            appStackContent = { stack -> AppStack(stack, uiState,
+                onLaunch = { app, bounds -> actions.launchAppAt?.invoke(app, bounds) ?: onLaunchApp(app) },
+                onDetails = { overlay = LauncherOverlay.AppDetails(it, fromAppList = true) }, onEdit = { editFolder(stack) },
+                modifier = Modifier.padding(horizontal = (8f - com.galaxyrio.gracelauncher.data.AppStackInset).dp, vertical = 4.dp)) },
             listState = drawerState,
             selectedLetter = selectedLetter,
             topSpace = drawerTop,

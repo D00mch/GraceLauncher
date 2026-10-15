@@ -688,4 +688,16 @@
     <string name="widget_screen_columns">Cells per row</string>
     <string name="widget_screen_edit">Edit widget screen</string>
     <string name="widget_screen_open">Open widget screen</string>
+    <string name="app_stacks_title">App stacks</string>
+    <string name="app_stack_create">Create app stack</string>
+    <string name="app_stack_edit">Edit app stack</string>
+    <string name="app_stacks_empty">No app stacks yet</string>
+    <string name="app_stack_name">App stack name</string>
+    <string name="app_stack_rename">Rename app stack</string>
+    <string name="app_stack_placement">Show app stack in</string>
+    <string name="app_stack_delete">Delete app stack</string>
+    <string name="app_stack_delete_confirmation">Delete “%1$s”? The apps inside will stay installed.</string>
+    <string name="app_stack_expand">Expand app stack</string>
+    <string name="app_stack_collapse">Collapse app stack</string>
+    <string name="app_stack_empty">Choose apps or shortcuts below.</string>
 </resources>

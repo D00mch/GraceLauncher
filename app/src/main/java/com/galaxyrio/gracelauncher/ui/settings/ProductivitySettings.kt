@@ -141,24 +141,28 @@ internal fun ProductivitySettings(
             item {
                 SettingsActionItem(
                     stringResource(R.string.settings_hide_apps), pluralStringResource(R.plurals.settings_hidden_count, uiState.effectiveHiddenAppKeys.size, uiState.effectiveHiddenAppKeys.size),
-                    0, 4, "settings_open_hidden_apps",
+                    0, 5, "settings_open_hidden_apps",
                     leading = { LauncherIcon(LauncherSymbol.VisibilityOff) },
                 ) { navigate(SettingsPage.HiddenApps) }
             }
             item {
                 SettingsActionItem(
-                    stringResource(R.string.settings_folders), pluralStringResource(R.plurals.settings_folder_count, uiState.folders.size, uiState.folders.size),
-                    1, 4, "settings_open_folders",
+                    stringResource(R.string.settings_folders), pluralStringResource(R.plurals.settings_folder_count, uiState.folders.count { !it.isAppStack }, uiState.folders.count { !it.isAppStack }),
+                    1, 5, "settings_open_folders",
                     leading = { LauncherIcon(LauncherSymbol.Folder) },
                 ) { navigate(SettingsPage.Folders) }
             }
             item {
+                SettingsActionItem(stringResource(R.string.app_stacks_title), null, 2, 5, "settings_app_stacks",
+                    leading = { LauncherIcon(LauncherSymbol.Steppers) }) { navigate(SettingsPage.AppStacks) }
+            }
+            item {
                 SettingsActionItem(stringResource(R.string.work_profile_title), stringResource(R.string.work_profile_summary),
-                    2, 4, "settings_open_work_profile", leading = { LauncherIcon(LauncherSymbol.Work) }) { navigate(SettingsPage.WorkProfile) }
+                    3, 5, "settings_open_work_profile", leading = { LauncherIcon(LauncherSymbol.Work) }) { navigate(SettingsPage.WorkProfile) }
             }
             item {
                 SettingsActionItem(stringResource(R.string.private_space_title), stringResource(R.string.private_space_summary),
-                    3, 4, "settings_open_private_space", leading = { LauncherIcon(LauncherSymbol.Lock) }) { navigate(SettingsPage.PrivateSpace) }
+                    4, 5, "settings_open_private_space", leading = { LauncherIcon(LauncherSymbol.Lock) }) { navigate(SettingsPage.PrivateSpace) }
             }
             item { SettingsHeading(stringResource(R.string.settings_advanced)) }
             item {
@@ -219,7 +223,7 @@ internal fun HiddenAppsSettings(uiState: LauncherUiState, actions: LauncherActio
 }
 
 @Composable
-internal fun FavoriteFoldersScreen(uiState: LauncherUiState, actions: LauncherActions, onBack: () -> Unit) {
+internal fun FavoriteFoldersScreen(uiState: LauncherUiState, actions: LauncherActions, appStacks: Boolean = false, onBack: () -> Unit) {
     // Only keep pending changes here. Folder placement remains the source of truth,
     // including folders created/edited through the normal settings page below.
     var selection by rememberSaveable { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
@@ -252,6 +256,7 @@ internal fun FavoriteFoldersScreen(uiState: LauncherUiState, actions: LauncherAc
             uiState.isLoadingSettings, uiState.settingsLoadFailed, uiState.settingsSaveFailed,
         )) {
             FolderSettings(uiState, actions, confirm, selectedIds = selectedIds, enabled = !saving,
+                appStacks = appStacks,
                 onToggle = { id -> selection = selection + (id to (id !in selectedIds)) },
                 onEdit = { editingId = it })
         }
@@ -263,8 +268,14 @@ internal fun FolderSettings(
     uiState: LauncherUiState, actions: LauncherActions, onBack: () -> Unit,
     selectedIds: Set<String>? = null, onToggle: (String) -> Unit = {}, enabled: Boolean = true,
     singleChoice: Boolean = false,
+    appStacks: Boolean = false,
+    selectionChangesFavorites: Boolean = true,
+    newPlacement: FolderPlacement = FolderPlacement.Favorites,
     onEdit: (String) -> Unit,
 ) {
+    val folders = uiState.folders.filter { it.isAppStack == appStacks }
+    val title = stringResource(if (appStacks) R.string.app_stacks_title else R.string.settings_folders)
+    val createTitle = stringResource(if (appStacks) R.string.app_stack_create else R.string.settings_folder_create)
     var creating by rememberSaveable { mutableStateOf(false) }
     var openingId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(openingId, uiState.folders, uiState.settingsSaveFailed) {
@@ -274,29 +285,29 @@ internal fun FolderSettings(
             onEdit(id)
         } else if (uiState.settingsSaveFailed) openingId = null
     }
-    SettingsScaffold(stringResource(R.string.settings_folders), "settings_folders", onBack) { padding ->
+    SettingsScaffold(title, if (appStacks) "settings_app_stacks" else "settings_folders", onBack) { padding ->
         SettingsList(padding) {
             item { Spacer(Modifier.height(24.dp)) }
             item {
                 SettingsActionItem(
-                    stringResource(R.string.settings_folder_create), null, 0, 1, "folder_create",
+                    createTitle, null, 0, 1, "folder_create",
                     enabled = enabled && openingId == null,
                     leading = { LauncherIcon(LauncherSymbol.Plus) },
                 ) { creating = true }
             }
-            if (uiState.folders.isEmpty()) {
-                item { Text(stringResource(R.string.settings_folder_empty), Modifier.padding(horizontal = 4.dp, vertical = 24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (folders.isEmpty()) {
+                item { Text(stringResource(if (appStacks) R.string.app_stacks_empty else R.string.settings_folder_empty), Modifier.padding(horizontal = 4.dp, vertical = 24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
-                item { SettingsHeading(stringResource(R.string.settings_folders)) }
-                itemsIndexed(uiState.folders, key = { _, folder -> folder.id }) { index, folder ->
+                item { SettingsHeading(title) }
+                itemsIndexed(folders, key = { _, folder -> folder.id }) { index, folder ->
                     val count = uiState.popups[folder.key]?.size ?: folder.appKeys.size
                     val checked = selectedIds?.contains(folder.id)
                     // An action selects a target, not whether the folder belongs in favorites.
-                    val placement = if (checked == null || singleChoice) folder.placement else folder.placement.withFavorites(checked)
+                    val placement = if (checked == null || singleChoice || !selectionChangesFavorites) folder.placement else folder.placement.withFavorites(checked)
                     SettingsActionItem(
                         folder.name,
                         pluralStringResource(R.plurals.settings_folder_summary, count, count, placement.label()),
-                        index, uiState.folders.size, "folder:${folder.id}",
+                        index, folders.size, "folder:${folder.id}",
                         enabled = enabled,
                         modifier = Modifier.semantics {
                             if (checked != null) {
@@ -317,7 +328,7 @@ internal fun FolderSettings(
                                     else Checkbox(checked, onCheckedChange = null,
                                         enabled = enabled && LocalSettingsStorageState.current.canEdit)
                                 }
-                                AppIcon(uiState.folderItem(folder), size = 32.dp)
+                                if (appStacks) LauncherIcon(LauncherSymbol.Steppers) else AppIcon(uiState.folderItem(folder), size = 32.dp)
                             }
                         },
                     ) { if (selectedIds == null) onEdit(folder.id) else onToggle(folder.id) }
@@ -325,9 +336,9 @@ internal fun FolderSettings(
             }
         }
     }
-    if (creating) TextEntryDialog(stringResource(R.string.settings_folder_create), "", { creating = false }, { name ->
+    if (creating) TextEntryDialog(createTitle, "", { creating = false }, { name ->
         val id = UUID.randomUUID().toString()
-        actions.saveFolder(LauncherFolder(id, name, emptyList(), FolderPlacement.Favorites))
+        actions.saveFolder(LauncherFolder(id, name, emptyList(), newPlacement, autoHideApps = appStacks, isAppStack = appStacks))
         creating = false
         openingId = id
     })
@@ -351,32 +362,35 @@ internal fun FolderEditorSettings(folderId: String?, uiState: LauncherUiState, a
     var confirmDelete by rememberSaveable(folder.id) { mutableStateOf(false) }
     PopupEditorScreen(app, uiState, actions, onBack, header = {
         Column(Modifier.padding(top = 16.dp)) {
-            SettingsActionItem(folder.name, stringResource(R.string.settings_folder_name), 0, 3, "folder_name",
-                leading = { AppIcon(app, Modifier.clickable(onClickLabel = stringResource(R.string.icon_designer_title)) { onEditIcon(app) }, size = 36.dp) }) { rename = true }
+            SettingsActionItem(folder.name, stringResource(if (folder.isAppStack) R.string.app_stack_name else R.string.settings_folder_name), 0, 3, "folder_name",
+                leading = { if (folder.isAppStack) LauncherIcon(LauncherSymbol.Apps)
+                    else AppIcon(app, Modifier.clickable(onClickLabel = stringResource(R.string.icon_designer_title)) { onEditIcon(app) }, size = 36.dp) }) { rename = true }
             Spacer(Modifier.height(ListItemDefaults.SegmentedGap))
-            SettingsActionItem(stringResource(R.string.settings_folder_placement), folder.placement.label(), 1, 3, "folder_placement",
+            SettingsActionItem(stringResource(if (folder.isAppStack) R.string.app_stack_placement else R.string.settings_folder_placement),
+                folder.placement.label(), 1, 3, "folder_placement",
                 leading = { LauncherIcon(LauncherSymbol.Folder) }) { placement = true }
             Spacer(Modifier.height(ListItemDefaults.SegmentedGap))
             SettingsToggleItem(stringResource(R.string.settings_folder_auto_hide), stringResource(R.string.settings_folder_auto_hide_summary),
                 folder.autoHideApps, 2, 3, "folder_auto_hide") { actions.setFolderAutoHide(folder.id, it) }
             TextButton(onClick = { confirmDelete = true }, enabled = LocalSettingsStorageState.current.canEdit, modifier = Modifier.testTag("folder_delete")) {
-                Text(stringResource(R.string.settings_folder_delete), color = MaterialTheme.colorScheme.error)
+                Text(stringResource(if (folder.isAppStack) R.string.app_stack_delete else R.string.settings_folder_delete), color = MaterialTheme.colorScheme.error)
             }
         }
     })
-    if (rename) TextEntryDialog(stringResource(R.string.rename_folder), folder.name, { rename = false }, {
+    if (rename) TextEntryDialog(stringResource(if (folder.isAppStack) R.string.app_stack_rename else R.string.rename_folder), folder.name, { rename = false }, {
         actions.rename(app, it); rename = false
     })
-    if (placement) FolderPlacementDialog(folder.placement, folder.appListAtBottom, { placement = false }) { selected, atBottom ->
+    if (placement) FolderPlacementDialog(folder.placement, folder.appListAtBottom, { placement = false },
+        titleRes = if (folder.isAppStack) R.string.app_stack_placement else R.string.settings_folder_placement) { selected, atBottom ->
         actions.updateFolder(folder.id, null, selected, atBottom); placement = false
     }
-    if (confirmDelete) DeleteFolderDialog(folder.name, { confirmDelete = false }) {
+    if (confirmDelete) DeleteFolderDialog(folder.name, { confirmDelete = false }, appStack = folder.isAppStack) {
         actions.deleteFolder(folder.id); onBack()
     }
 }
 
 @Composable
-private fun FolderPlacement.label(): String = stringResource(
+internal fun FolderPlacement.label(): String = stringResource(
     when (this) {
         FolderPlacement.Favorites -> R.string.settings_folder_favorites
         FolderPlacement.AppList -> R.string.settings_folder_app_list

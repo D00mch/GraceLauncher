@@ -50,6 +50,7 @@ import com.galaxyrio.gracelauncher.ui.LauncherActions
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.AppIcon
 import com.galaxyrio.gracelauncher.ui.components.AppNotificationLabel
+import com.galaxyrio.gracelauncher.ui.components.AppStack
 import com.galaxyrio.gracelauncher.ui.widgets.HomeWidget
 import com.galaxyrio.gracelauncher.ui.widgets.rememberHostedWidget
 import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
@@ -190,7 +191,14 @@ fun ShortcutPopup(
         items(entries, key = { "entry:${it.key}" }) { entry ->
             val widget = entry.widget
             val itemApp = uiState.findItem(entry.key) ?: shortcuts.firstOrNull { it.key == entry.key }
+            val stack = uiState.folders.firstOrNull { it.id == itemApp?.folderId && it.isAppStack }
             when {
+                stack != null -> AppStack(stack, uiState, onLaunch = { item, bounds ->
+                    onLaunchItem(item, bounds); if (!isPrivateFolder) onDismiss()
+                }, onDetails = onDetails, onEdit = { onDetails(uiState.folderItem(stack)) },
+                    enabled = !reveal.dragging && reveal.expanded,
+                    iconSize = 36.dp, onWallpaper = false,
+                    modifier = Modifier.padding(horizontal = (12f - com.galaxyrio.gracelauncher.data.AppStackInset).dp, vertical = 4.dp))
                 widget != null -> {
                     val hosted = rememberHostedWidget(widget)
                     Box(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {

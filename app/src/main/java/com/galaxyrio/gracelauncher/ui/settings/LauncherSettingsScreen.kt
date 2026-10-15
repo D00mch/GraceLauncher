@@ -77,7 +77,7 @@ internal enum class SettingsPage {
     Root, Productivity, Clock, ClockStyle, Calendar, Weather, Themes, Advanced, About, HiddenApps, Folders, FolderEditor,
     Changelog, Licenses, AppLicense, IconPacks, IconDesigner, IconDesignerApp, PrivateSpace, PrivateSpaceEditor, Search,
     MediaPlayer, GraceButton, GraceAction, GraceApp, GraceShortcut, GraceFolder, Gestures, WorkProfile, WorkProfileEditor,
-    LabGraceButton, LabGesture, Fonts, ListAppearance, Alphabet, ShortcutsFolders,
+    LabGraceButton, LabGesture, Fonts, ListAppearance, Alphabet, ShortcutsFolders, AppStacks,
     GraceButtonAppearance, GraceButtonPosition, CalendarAppearance, WeatherAppearance, MediaPlayerAppearance,
     WidgetScreen, WidgetScreenEditor,
 }
@@ -319,6 +319,9 @@ fun LauncherSettingsScreen(
                             }
                         })
                     SettingsPage.Folders -> FolderSettings(uiState, actions, back) { folderId ->
+                        if (isCurrent()) navController.navigate("FolderEditor/${Uri.encode(folderId)}")
+                    }
+                    SettingsPage.AppStacks -> FolderSettings(uiState, actions, back, appStacks = true) { folderId ->
                         if (isCurrent()) navController.navigate("FolderEditor/${Uri.encode(folderId)}")
                     }
                     SettingsPage.FolderEditor -> FolderEditorSettings(entry.arguments?.getString("folderId"), uiState, actions, back,

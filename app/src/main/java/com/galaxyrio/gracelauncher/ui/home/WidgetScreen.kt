@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +59,7 @@ import kotlin.math.roundToInt
 
 /** An unbounded grid with a stationary touch surface and viewport-only composition. */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 internal fun WidgetScreen(
     uiState: LauncherUiState, actions: LauncherActions, topInset: Dp, bottomInset: Dp,
     editing: Boolean, enabled: Boolean, onEditingChange: (Boolean) -> Unit, onEdit: () -> Unit,
@@ -67,6 +70,9 @@ internal fun WidgetScreen(
     val owner = remember(title) { widgetScreenOwner(title) }
     val entries = uiState.popupItems(owner, emptyList())
     val byKey = entries.associateBy { it.key }
+    val stacks = uiState.folders.filter { it.isAppStack && it.key in byKey }.associateBy { it.key }
+    val currentStackKeys by rememberUpdatedState(stacks.keys)
+    var expandedStacks by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val widgetKeys = entries.filter { it.widget != null }.map { it.key }.toSet()
     val editable = enabled && !uiState.isLoadingSettings && !uiState.settingsLoadFailed
     val currentEditable by rememberUpdatedState(editable)
@@ -75,7 +81,7 @@ internal fun WidgetScreen(
     val currentWidgetKeys by rememberUpdatedState(widgetKeys)
     val persist by rememberUpdatedState<(List<WidgetGridCell>, String?) -> Unit>({ cells, removed ->
         actions.updatePopup(owner, emptyList()) { current ->
-            val positions = cells.associateBy { it.key }
+            val positions = collapseWidgetStacks(cells, currentStackKeys).associateBy { it.key }
             current.filterNot { it.key == removed }.map { entry ->
                 positions[entry.key]?.let { entry.copy(grid = it.placement()) } ?: entry
             }.sortedWith(compareBy({ it.grid?.row ?: Int.MAX_VALUE }, { it.grid?.column ?: Int.MAX_VALUE }))
@@ -144,12 +150,21 @@ internal fun WidgetScreen(
                     gapPx + (padding?.top ?: 0) + (padding?.bottom ?: 0))
             }
         }
-        val resolved = remember(entries, columns, specs) { restoreWidgetGrid(entries, columns, specs.mapValues { it.value.first }) }
+        val stackIconSize = 40f * appearance.iconSize / 100f
+        val stackColumns = appStackColumns((maxWidth - side * 2 - gap).value, stackIconSize)
+        val stackRows = stacks.mapValues { (key, stack) ->
+            val count = uiState.popupItems(uiState.folderItem(stack), emptyList()).count { it.widget == null && uiState.findItem(it.key) != null }
+            ceil((appStackHeight(appStackRows(count, stackColumns, key in expandedStacks), stackIconSize) + gap.value) / cellHeight.value).toInt().coerceAtLeast(1)
+        }
+        val baseCells = remember(entries, columns, specs, stacks.keys) {
+            restoreWidgetGrid(entries, columns, specs.mapValues { it.value.first } + stacks.keys.associateWith { WidgetGridSize(columns, 1) })
+        }
+        val resolved = remember(baseCells, stackRows) { expandWidgetStacks(baseCells, stackRows) }
         LaunchedEffect(resolved, entries, uiState.isLoadingSettings, uiState.settingsLoadFailed) {
             if (!grid.busy) {
                 grid.synchronize(resolved)
                 if (!uiState.isLoadingSettings && !uiState.settingsLoadFailed &&
-                    resolved.any { byKey[it.key]?.grid != it.placement() }) persist(resolved, null)
+                    baseCells.any { byKey[it.key]?.grid != it.placement() }) persist(resolved, null)
             }
         }
         SideEffect { grid.configure(columns, widthPx, heightPx, origin, viewportPx, bottomPx, deleteRect, widgetKeys) }
@@ -171,7 +186,7 @@ internal fun WidgetScreen(
             // Keep this node enabled during a held drag. Consumed pointer changes stop scrolling;
             // toggling/removing gesture modifiers here would cancel the same pointer stream.
             .scrollable(grid.scrolling, Orientation.Vertical, enabled = enabled)
-            .widgetGridInput(grid, { currentEditable }, { currentWidgetKeys }, { launch(it) },
+            .widgetGridInput(grid, { currentEditable }, { currentWidgetKeys }, { currentStackKeys }, { launch(it) },
                 { key, point -> currentStart(key, point) }, { currentEdit() })
             .semantics {
                 verticalScrollAxisRange = ScrollAxisRange({ grid.scroll }, { grid.maxScroll })
@@ -198,12 +213,14 @@ internal fun WidgetScreen(
                 val dragPosition = grid.dragPosition + origin
                 val target = if (dragging) IntOffset(dragPosition.x.roundToInt(), dragPosition.y.roundToInt()) else destination
                 val animated by animateIntOffsetAsState(target,
-                    if (dragging || (selected && grid.resizing)) snap() else spring(dampingRatio = .84f, stiffness = 380f), label = "gridReflow")
+                    if (dragging || (selected && grid.resizing)) snap() else MaterialTheme.motionScheme.defaultSpatialSpec(), label = "gridReflow")
                 val scale by animateFloatAsState(if (dragging) 1.06f else 1f, spring(dampingRatio = .7f), label = "gridLift")
                 val position = if (dragging) dragPosition else if (grid.resizing && selected)
                     Offset(destination.x.toFloat(), destination.y.toFloat()) else Offset(animated.x.toFloat(), animated.y.toFloat())
                 val width = cellWidth * cell.size.columns
-                val height = cellHeight * cell.size.rows
+                val stackHeight by animateDpAsState(cellHeight * cell.size.rows,
+                    MaterialTheme.motionScheme.defaultSpatialSpec(), label = "stackGridHeight")
+                val height = if (cell.key in stacks) stackHeight else cellHeight * cell.size.rows
                 val top = position.y - grid.scroll
                 val destinationTop = destination.y - grid.scroll
                 fun inViewport(y: Float) = y + cell.size.rows * heightPx >= -heightPx && y <= viewportPx + heightPx
@@ -221,7 +238,7 @@ internal fun WidgetScreen(
                         .padding(gap / 2).testTag("widget_screen_item:${entry.key}")
                         .semantics {
                             contentDescription = label
-                            if (app != null) onClick { if (enabled) launch(cell.key); enabled }
+                            if (app != null && cell.key !in stacks) onClick { if (enabled) launch(cell.key); enabled }
                             customActions = if (!editable) emptyList() else buildList {
                                 add(CustomAccessibilityAction(previousLabel) { grid.moveBy(cell.key, -1); true })
                                 add(CustomAccessibilityAction(nextLabel) { grid.moveBy(cell.key, 1); true })
@@ -232,7 +249,15 @@ internal fun WidgetScreen(
                         }) {
                         Box(Modifier.matchParentSize().clip(RoundedCornerShape(16.dp))
                             .background(if (dragging) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .3f) else Color.Transparent)) {
-                            if (entry.widget != null && hosted != null) {
+                            val stack = stacks[cell.key]
+                            if (stack != null) AppStack(stack, uiState,
+                                onLaunch = { item, bounds -> actions.launchAppAt?.invoke(item, bounds) ?: onLaunchApp(item) },
+                                onDetails = onAppDetails, onEdit = { onAppDetails(uiState.folderItem(stack)) },
+                                enabled = enabled && !grid.busy, gridManaged = true,
+                                expanded = cell.key in expandedStacks,
+                                onExpandedChange = { open -> expandedStacks = if (open) expandedStacks + cell.key else expandedStacks - cell.key },
+                                modifier = Modifier.fillMaxWidth())
+                            else if (entry.widget != null && hosted != null) {
                                 HomeWidget(entry.widget, hosted, (height - gap).value.roundToInt(),
                                     editing = selected, enabled = enabled, hapticsEnabled = false,
                                     onLongPress = {},
@@ -282,12 +307,14 @@ internal fun WidgetScreen(
 /** Apps and blank space share one recognizer. No moving hit target or clickable can cancel a held drag. */
 private fun Modifier.widgetGridInput(
     grid: WidgetGridState, enabled: () -> Boolean, nativeWidgets: () -> Set<String>,
+    interactiveItems: () -> Set<String>,
     onTap: (String) -> Unit, onHold: (String, Offset) -> Unit, onEmptyHold: () -> Unit,
 ) = pointerInput(grid) {
     awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false)
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         if (!enabled() || down.isConsumed) return@awaitEachGesture
         val cell = grid.cellAt(down.position)
+        val interactive = cell?.key in interactiveItems()
         // Native widgets retain button/collection interaction and report their own long press.
         if (cell != null && cell.key in nativeWidgets() && grid.selectedKey != cell.key) {
             if (grid.selectedKey != null) grid.deselect()
@@ -298,22 +325,22 @@ private fun Modifier.widgetGridInput(
         var pointer = down.position
         withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
             while (true) {
-                val event = awaitPointerEvent()
+                val event = awaitPointerEvent(if (interactive) PointerEventPass.Initial else PointerEventPass.Main)
                 val change = event.changes.firstOrNull { it.id == down.id }
-                if (change == null || event.changes.count { it.pressed } > 1 || change.isConsumed ||
+                if (change == null || event.changes.count { it.pressed } > 1 || (!interactive && change.isConsumed) ||
                     (change.position - down.position).getDistance() > viewConfiguration.touchSlop || !enabled()) {
                     cancelled = true; break
                 }
                 pointer = change.position
                 if (!change.pressed) { released = true; break }
                 // A parent pager/scrollable may claim this movement after our Main pass.
-                if (awaitPointerEvent(PointerEventPass.Final).changes.any { it.isConsumed }) { cancelled = true; break }
+                if (!interactive && awaitPointerEvent(PointerEventPass.Final).changes.any { it.isConsumed }) { cancelled = true; break }
             }
         }
         if (cancelled) return@awaitEachGesture
         if (released) {
             if (grid.selectedKey != null) grid.deselect()
-            else if (cell != null) onTap(cell.key)
+            else if (cell != null && !interactive) onTap(cell.key)
         } else if (cell == null) {
             grid.deselect()
             onEmptyHold()

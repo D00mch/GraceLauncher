@@ -20,6 +20,12 @@ current content tint.
 
 ## Sources
 
+### App stack icon added 2026-10-15
+
+- `ms_steppers.xml`: https://raw.githubusercontent.com/google/material-design-icons/master/symbols/android/steppers/materialsymbolsoutlined/steppers_24px.xml
+
+Official vector path retained. Same Apache-2.0 license.
+
 ### Grace button suggestions added 2026-10-09
 
 - `ms_format_list_bulleted.xml`: https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/format_list_bulleted/materialsymbolsoutlined/format_list_bulleted_24px.svg

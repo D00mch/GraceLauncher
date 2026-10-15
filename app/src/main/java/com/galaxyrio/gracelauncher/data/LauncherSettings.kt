@@ -99,13 +99,15 @@ data class LauncherFolder(
     val appListAtBottom: Boolean = true,
     /** Membership-derived hiding never changes the explicit hidden-app table. */
     val autoHideApps: Boolean = false,
+    /** Same membership/placement storage, rendered inline instead of as a named folder. */
+    val isAppStack: Boolean = false,
 ) {
     val key: String get() = "folder:$id"
 
     /** Local identity only: folders must never be sent to Android as activities. */
     fun asApp() = LauncherApp(
         componentName = android.content.ComponentName("com.galaxyrio.gracelauncher", key),
-        label = name, icon = null, folderId = id,
+        label = name, icon = null, folderId = id, isAppStack = isAppStack,
     )
 }
 

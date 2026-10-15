@@ -73,6 +73,7 @@ abstract class LauncherItemsDao {
     @Query("SELECT * FROM item_icons") abstract suspend fun readIcons(): List<ItemIconEntity>
     @Query("SELECT * FROM saved_shortcuts") abstract fun shortcuts(): kotlinx.coroutines.flow.Flow<List<SavedShortcutEntity>>
     @Query("SELECT * FROM app_popups") abstract fun popups(): kotlinx.coroutines.flow.Flow<List<AppPopupEntity>>
+    @Query("SELECT * FROM app_popups") abstract suspend fun readPopups(): List<AppPopupEntity>
     @Query("SELECT * FROM app_popups WHERE ownerKey = :key") abstract suspend fun popup(key: String): AppPopupEntity?
     @Query("SELECT * FROM saved_shortcuts WHERE itemKey = :key") abstract suspend fun shortcut(key: String): SavedShortcutEntity?
     @Upsert abstract suspend fun saveIcon(value: ItemIconEntity)
@@ -138,7 +139,11 @@ class LauncherItemsRepository(private val database: LauncherDatabase) {
         database.withTransaction {
             requireExistingFolder(key)
             val previous = dao.popup(key)?.let { PopupItem.decode(it.itemsJson) } ?: defaults
-            val next = transform(previous).distinctBy { it.key }
+            val stack = key.takeIf { it.startsWith("folder:") }?.removePrefix("folder:")
+                ?.let { database.settingsDao().folder(it) }?.isAppStack == true
+            val next = transform(previous).distinctBy { it.key }.filter {
+                !stack || (it.widget == null && !it.key.startsWith("folder:"))
+            }
             dao.savePopup(AppPopupEntity(key, PopupItem.encode(next)))
             val retained = next.mapNotNull { it.widget?.widgetId }.toSet()
             previous.mapNotNull { it.widget?.widgetId }.filterNot { it in retained }

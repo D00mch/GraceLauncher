@@ -13,7 +13,7 @@ import com.galaxyrio.gracelauncher.R
 enum class LauncherSymbol {
     Star, Info, Hourglass, Category, Delete, Chevron, Settings, Launch, Outbound, Android,
     Plus, Edit, Apps, Check, Palette, Home, Search, Folder, Clock, Calendar, Weather, Move, Resize, DesignServices, Lock, Work, Encrypted, History2,
-    Music, Widgets, Notifications, VisibilityOff, Gesture, Vibration
+    Music, Widgets, Notifications, VisibilityOff, Gesture, Vibration, Steppers
 }
 
 /** Official Material Symbols Outlined: optical size 24, weight 400, grade 0, fill 0. */
@@ -44,6 +44,7 @@ fun LauncherIcon(
                 LauncherSymbol.Home -> R.drawable.ms_home
                 LauncherSymbol.Search -> R.drawable.ms_search
                 LauncherSymbol.Folder -> R.drawable.ms_folder
+                LauncherSymbol.Steppers -> R.drawable.ms_steppers
                 LauncherSymbol.History2 -> R.drawable.ms_history_2
                 LauncherSymbol.Lock -> R.drawable.ms_lock
                 LauncherSymbol.Work -> R.drawable.ms_work

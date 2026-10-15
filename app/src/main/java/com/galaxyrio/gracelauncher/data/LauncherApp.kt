@@ -39,6 +39,8 @@ data class LauncherApp(
     val iconDisplay: IconDisplaySettings? = null,
     /** Dominant color of the original app icon, before any pack/design. Null means neutral/unavailable. */
     val originalIconColor: Int? = null,
+    /** Inline stacks still need a distinct icon in editors and selection lists. */
+    val isAppStack: Boolean = false,
 ) {
     val key: String = folderId?.let { "folder:$it" } ?: shortcut?.key
         ?: userSerial?.let { "profile:$it:${componentName.flattenToString()}" } ?: componentName.flattenToString()

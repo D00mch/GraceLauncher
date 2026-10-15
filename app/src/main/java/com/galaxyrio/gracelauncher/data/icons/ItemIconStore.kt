@@ -102,7 +102,7 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
                     PrivateSpaceFolderId -> R.drawable.ms_lock
                     com.galaxyrio.gracelauncher.data.WorkProfileFolderId -> R.drawable.ms_work
                     com.galaxyrio.gracelauncher.data.RecentlyInstalledFolderId -> R.drawable.ms_history_2
-                    else -> R.drawable.ms_folder
+                    else -> if (app.isAppStack) R.drawable.ms_steppers else R.drawable.ms_folder
                 })
                     ?.mutate() ?: return@withContext null
                 glyph.setTint(colors.second)

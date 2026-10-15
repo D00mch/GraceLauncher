@@ -33,6 +33,7 @@ class LauncherSettingsRepository(private val database: LauncherDatabase) {
                     placement = FolderPlacement.decode(entry.placement),
                     appListAtBottom = entry.appListAtBottom,
                     autoHideApps = entry.autoHideApps,
+                    isAppStack = entry.isAppStack,
                 )
             },
         )
@@ -109,7 +110,7 @@ class LauncherSettingsRepository(private val database: LauncherDatabase) {
         require(name.isNotEmpty()) { "A folder name must not be blank" }
         val keys = folder.appKeys.filter(String::isNotBlank).distinct()
         database.withTransaction {
-            dao.upsertFolder(LauncherFolderEntity(folder.id, name, folder.placement.name, folder.appListAtBottom, folder.autoHideApps))
+            dao.upsertFolder(LauncherFolderEntity(folder.id, name, folder.placement.name, folder.appListAtBottom, folder.autoHideApps, folder.isAppStack))
             val itemsDao = database.itemsDao()
             val previous = itemsDao.popup(folder.key)?.let { PopupItem.decode(it.itemsJson) }.orEmpty()
             // Membership callers must not discard widgets or move them to the end.
@@ -144,6 +145,11 @@ class LauncherSettingsRepository(private val database: LauncherDatabase) {
         val itemsDao = database.itemsDao()
         val widgets = itemsDao.popup(key)?.let { PopupItem.decode(it.itemsJson) }.orEmpty().mapNotNull { it.widget?.widgetId }
         itemsDao.deletePopup(key)
+        // Stacks can be referenced by several surfaces. Remove references, not their apps.
+        itemsDao.readPopups().forEach { popup ->
+            val items = PopupItem.decode(popup.itemsJson)
+            if (items.any { it.key == key }) itemsDao.savePopup(popup.copy(itemsJson = PopupItem.encode(items.filterNot { it.key == key })))
+        }
         itemsDao.resetIcon(key)
         dao.deleteFolder(id)
         widgets

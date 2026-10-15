@@ -292,6 +292,10 @@ private fun AppDetailsSheet(app: LauncherApp, actions: LauncherActions, onChange
         LaunchedEffect(app.key) { onChange(null) }
         return
     }
+    if (folder?.isAppStack == true) {
+        LaunchedEffect(folder.id) { onChange(LauncherOverlay.FolderSettings(folder.id)) }
+        return
+    }
     val renameTitle = stringResource(if (folder != null) R.string.rename_folder else R.string.rename_app)
     val editIconDescription = stringResource(R.string.icon_designer_title)
     // Extend touch surfaces into the gutter, keeping their inset content on the
@@ -425,7 +429,7 @@ private fun CategoryPicker(app: LauncherApp, uiState: LauncherUiState, actions: 
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp)) {
         PanelTitle(stringResource(R.string.add_to_folder))
         Text(app.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        uiState.folders.forEach { folder ->
+        uiState.folders.filterNot { it.isAppStack }.forEach { folder ->
             val isMember = app.key in folder.appKeys
             PanelAction(if (isMember) LauncherSymbol.Check else LauncherSymbol.Folder, folder.name) {
                 actions.updatePopup(uiState.folderItem(folder), listOf(app)) { current ->
@@ -486,10 +490,10 @@ internal fun TextEntryDialog(title: String, initial: String, onDismiss: () -> Un
 
 @Composable
 internal fun FolderPlacementDialog(selected: FolderPlacement, appListAtBottom: Boolean,
-    onDismiss: () -> Unit, onSelect: (FolderPlacement, Boolean) -> Unit) {
+    onDismiss: () -> Unit, titleRes: Int = R.string.settings_folder_placement, onSelect: (FolderPlacement, Boolean) -> Unit) {
     var placement by remember { mutableStateOf(selected) }
     var atBottom by remember { mutableStateOf(appListAtBottom) }
-    AlertDialog(onDismissRequest = onDismiss, shape = RoundedCornerShape(40.dp), title = { Text(stringResource(R.string.settings_folder_placement)) },
+    AlertDialog(onDismissRequest = onDismiss, shape = RoundedCornerShape(40.dp), title = { Text(stringResource(titleRes)) },
         text = { Column {
             FolderPlacementChoice(stringResource(R.string.settings_folder_favorites), placement.inFavorites,
                 Modifier.testTag("folder_placement:Favorites")) { placement = placement.withFavorites(it) }
@@ -517,9 +521,9 @@ private fun FolderPlacementChoice(title: String, checked: Boolean, modifier: Mod
 }
 
 @Composable
-internal fun DeleteFolderDialog(name: String, onDismiss: () -> Unit, onDelete: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, shape = RoundedCornerShape(40.dp), title = { Text(stringResource(R.string.settings_folder_delete)) },
-        text = { Text(stringResource(R.string.settings_folder_delete_confirmation, name)) },
+internal fun DeleteFolderDialog(name: String, onDismiss: () -> Unit, appStack: Boolean = false, onDelete: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, shape = RoundedCornerShape(40.dp), title = { Text(stringResource(if (appStack) R.string.app_stack_delete else R.string.settings_folder_delete)) },
+        text = { Text(stringResource(if (appStack) R.string.app_stack_delete_confirmation else R.string.settings_folder_delete_confirmation, name)) },
         confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.testTag("folder_confirm_delete")) {
             Text(stringResource(R.string.settings_delete), color = MaterialTheme.colorScheme.error)
         } }, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } })

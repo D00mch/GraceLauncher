@@ -78,6 +78,7 @@ import com.galaxyrio.gracelauncher.ui.components.rememberLauncherListGestureConn
 import com.galaxyrio.gracelauncher.ui.components.AppRowGestures
 import com.galaxyrio.gracelauncher.ui.components.LauncherAppRow
 import com.galaxyrio.gracelauncher.ui.components.FolderRow
+import com.galaxyrio.gracelauncher.ui.components.AppStack
 import com.galaxyrio.gracelauncher.ui.components.LauncherLayout
 import com.galaxyrio.gracelauncher.ui.components.startPadding
 import com.galaxyrio.gracelauncher.ui.components.endPadding
@@ -246,7 +247,11 @@ fun HomeScreen(
         }
         items(favorites, key = LauncherApp::key, contentType = { if (it.folderId == null) "app" else "folder" }) { app ->
             val folder = app.folderId?.let { id -> uiState.folders.firstOrNull { it.id == id } }
-            if (folder != null) FolderRow(
+            if (folder?.isAppStack == true) AppStack(folder, uiState,
+                onLaunch = { item, bounds -> rowGestures.onLaunchAt?.invoke(item, bounds) ?: onLaunchApp(item) },
+                onDetails = onAppDetails, onEdit = { onEditFolder(folder) },
+                modifier = Modifier.padding(horizontal = LauncherLayout.ContentInset - com.galaxyrio.gracelauncher.data.AppStackInset.dp, vertical = 4.dp))
+            else if (folder != null) FolderRow(
                 folder = folder,
                 app = app,
                 highlighted = highlightedAppKey == folder.key,

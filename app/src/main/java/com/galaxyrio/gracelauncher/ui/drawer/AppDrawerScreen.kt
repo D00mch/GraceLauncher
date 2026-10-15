@@ -68,6 +68,7 @@ fun AppDrawerScreen(
     onFolderDragEnd: (Boolean) -> Unit = {},
     notificationFor: (LauncherApp) -> AppNotification? = { null },
     folderApps: Map<String, LauncherApp> = emptyMap(),
+    appStackContent: (@Composable (LauncherFolder) -> Unit)? = null,
     privateExpanded: Boolean = false,
     privateAppsPublic: Boolean = false,
     privateLoading: Boolean = false,
@@ -160,7 +161,7 @@ fun AppDrawerScreen(
                         highlighted = highlightedAppKey == item.app.key,
                         notification = notificationFor(item.app),
                     )
-                    is DrawerItem.Folder -> FolderRow(
+                    is DrawerItem.Folder -> if (item.folder.isAppStack && appStackContent != null) appStackContent(item.folder) else FolderRow(
                         showLabel = listAppearance.showNames(favorites = false),
                         folder = item.folder,
                         app = folderApps[item.folder.id] ?: item.folder.asApp(),
