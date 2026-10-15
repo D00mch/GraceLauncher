@@ -308,29 +308,33 @@ internal fun <T> SettingsSelectionDialog(
     itemLabel: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
+    footer: @Composable () -> Unit = {},
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()).selectableGroup()) {
-                items.forEach { item ->
-                    val enabled = LocalSettingsStorageState.current.canEdit
-                    Row(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                            .testTag("$tag:${itemKey(item)}")
-                            .selectable(
-                                selected = item == selectedItem, enabled = enabled,
-                                role = Role.RadioButton, onClick = { onSelect(item) },
-                            )
-                            .padding(horizontal = 4.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        RadioButton(selected = item == selectedItem, onClick = null, enabled = enabled)
-                        Text(itemLabel(item), style = MaterialTheme.typography.bodyLarge)
+            Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {
+                Column(Modifier.selectableGroup()) {
+                    items.forEach { item ->
+                        val enabled = LocalSettingsStorageState.current.canEdit
+                        Row(
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                                .testTag("$tag:${itemKey(item)}")
+                                .selectable(
+                                    selected = item == selectedItem, enabled = enabled,
+                                    role = Role.RadioButton, onClick = { onSelect(item) },
+                                )
+                                .padding(horizontal = 4.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            RadioButton(selected = item == selectedItem, onClick = null, enabled = enabled)
+                            Text(itemLabel(item), style = MaterialTheme.typography.bodyLarge)
+                        }
                     }
                 }
+                footer()
             }
         },
         confirmButton = {},

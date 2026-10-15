@@ -188,7 +188,7 @@ internal fun LauncherOverlays(
             else onChange(LauncherOverlay.FolderSettings(folder.id))
         })
         FolderPopup(
-            showNames = uiState.settings.listAppearance.showNames(favoritesSurface),
+            showNames = uiState.settings.listAppearance.showNames(favoritesSurface, insideFolder = true),
             folder = folder, apps = members, anchor = overlay.anchor, reveal = overlay.reveal,
             uiState = uiState, actions = actions,
             onOpenAppPopup = { app, bounds -> onChange(LauncherOverlay.Shortcuts(app, bounds)) },

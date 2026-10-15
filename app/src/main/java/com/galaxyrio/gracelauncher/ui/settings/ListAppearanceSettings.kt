@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.*
@@ -90,7 +92,18 @@ internal fun ListAppearanceSettings(uiState: LauncherUiState, actions: LauncherA
             onSelect = { id -> change { it.copy(fontId = id) }; dialog = null },
             onManage = { dialog = null; onManageFonts() }, onDismiss = { dialog = null }, tag = "list_font_picker")
         "names" -> SettingsSelectionDialog(stringResource(R.string.list_show_names), AppNameVisibility.entries, draft.names,
-            "list_names", { it.name }, { it.label() }, { value -> change { it.copy(names = value) }; dialog = null }, { dialog = null })
+            "list_names", { it.name }, { it.label() }, { value -> change { it.copy(names = value) }; dialog = null }, { dialog = null },
+            footer = {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("list_names_in_folders")
+                    .toggleable(value = draft.applyNameVisibilityToFolders, enabled = enabled, role = Role.Switch,
+                        onValueChange = { value -> change { it.copy(applyNameVisibilityToFolders = value) } })
+                    .padding(horizontal = 4.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(stringResource(R.string.list_names_in_folders), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                    Switch(draft.applyNameVisibilityToFolders, onCheckedChange = null, enabled = enabled)
+                }
+            })
     }
     SettingsScaffold(stringResource(R.string.settings_favorites_app_list), "list_appearance",
         { if (colorPage != null) closeColor() else onBack() }, fixedCollapsed = true) { padding ->
@@ -215,6 +228,7 @@ private fun AppNameVisibility.label(): String = stringResource(when (this) {
     AppNameVisibility.Both -> R.string.list_names_both
     AppNameVisibility.Favorites -> R.string.list_names_favorites
     AppNameVisibility.AppList -> R.string.list_names_app_list
+    AppNameVisibility.Neither -> R.string.list_names_neither
 })
 
 @Composable

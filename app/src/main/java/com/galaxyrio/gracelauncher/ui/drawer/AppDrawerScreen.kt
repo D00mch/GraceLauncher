@@ -152,7 +152,7 @@ fun AppDrawerScreen(
                         ),
                     )
                     is DrawerItem.App -> LauncherAppRow(
-                        showLabel = listAppearance.showNames(favorites = false),
+                        showLabel = listAppearance.showNames(favorites = false, insideFolder = item.section == FolderSection),
                         app = item.app,
                         onClick = { onLaunchApp(item.app) },
                         onLongClick = { onAppDetails(item.app) },
@@ -176,7 +176,7 @@ fun AppDrawerScreen(
                         } },
                     )
                     is DrawerItem.PrivateApp -> LauncherAppRow(
-                        showLabel = listAppearance.showNames(favorites = false),
+                        showLabel = listAppearance.showNames(favorites = false, insideFolder = true),
                         app = item.app, onClick = { onLaunchApp(item.app) }, onLongClick = { onAppDetails(item.app) },
                         onSwipeRight = { if (privateAppsPublic) onAppShortcuts(item.app, it) },
                         gestures = if (privateAppsPublic) rowGestures else AppRowGestures(onLaunchAt = rowGestures.onLaunchAt),

@@ -629,6 +629,8 @@
     <string name="list_names_both">收藏与应用列表</string>
     <string name="list_names_favorites">仅收藏</string>
     <string name="list_names_app_list">仅应用列表</string>
+    <string name="list_names_neither">均不显示</string>
+    <string name="list_names_in_folders">同时影响文件夹内部</string>
     <string name="list_left_alphabet">从左侧使用字母表</string>
     <string name="list_left_alphabet_summary">沿左侧边缘滑动，操作右侧的字母表</string>
     <string name="shortcuts_folders_title">快捷方式与文件夹</string>

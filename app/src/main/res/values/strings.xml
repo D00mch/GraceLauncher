@@ -647,6 +647,8 @@
     <string name="list_names_both">Favorites and app list</string>
     <string name="list_names_favorites">Favorites only</string>
     <string name="list_names_app_list">App list only</string>
+    <string name="list_names_neither">Neither</string>
+    <string name="list_names_in_folders">Also apply inside folders</string>
     <string name="list_left_alphabet">Use alphabet from the left</string>
     <string name="list_left_alphabet_summary">Slide along the left edge to control the alphabet on the right</string>
     <string name="shortcuts_folders_title">Shortcuts &amp; folders</string>
