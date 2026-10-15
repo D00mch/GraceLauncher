@@ -667,7 +667,8 @@ internal fun LauncherScreen(
         val folderOpen = (overlay as? LauncherOverlay.Folder)?.folder?.id == PrivateSpaceFolderId
         if (privateFolderWasOpen && !folderOpen && !editingPrivate && !privateAppEditing) actions.closePrivateSpace()
         privateFolderWasOpen = folderOpen || (privateFolderWasOpen && privateAppEditing)
-        if (folderOpen && (!drawerOpen || uiState.settings.privateSpace.display != PrivateSpaceDisplay.Folder)) overlay = null
+        // Favorites always open a popup, independently of the drawer's profile display mode.
+        if (folderOpen && drawerOpen && uiState.settings.privateSpace.display != PrivateSpaceDisplay.Folder) overlay = null
     }
     val screenActions = actions.copy(moveWidget = {
         pageScope.launch { homePager.scrollToPage(0) }
@@ -807,14 +808,18 @@ internal fun LauncherScreen(
     )
     val highlightedAppKey = (overlay as? LauncherOverlay.AppDetails)?.app?.key
     val openPrivateSpace: (Rect) -> Unit = { bounds ->
+        val fromFavorites = !drawerOpen
         when {
             uiState.isDefaultHome == false -> actions.requestDefaultHome()
             uiState.privateSpace.user == null -> actions.openPrivateSpaceSettings()
             else -> actions.requestPrivateSpace(false) {
                 workListOpen = false
-                drawerOpen = true
+                drawerOpen = !fromFavorites
                 selectedLetter = null
-                if (latestUiState.settings.privateSpace.display == PrivateSpaceDisplay.List) privateListOpen = true
+                if (fromFavorites) {
+                    privateListOpen = false
+                    overlay = LauncherOverlay.Folder(latestUiState.privateFolder, bounds)
+                } else if (latestUiState.settings.privateSpace.display == PrivateSpaceDisplay.List) privateListOpen = true
                 else if (latestUiState.settings.privateSpace.display == PrivateSpaceDisplay.Folder)
                     overlay = LauncherOverlay.Folder(latestUiState.privateFolder, bounds)
             }
@@ -830,7 +835,7 @@ internal fun LauncherScreen(
     val openFolder: (LauncherFolder, Rect) -> Unit = { folder, bounds ->
         when {
             folder.id == PrivateSpaceFolderId -> openPrivateSpace(bounds)
-            folder.id == WorkProfileFolderId && uiState.settings.workProfile.display == PrivateSpaceDisplay.List -> {
+            folder.id == WorkProfileFolderId && drawerOpen && uiState.settings.workProfile.display == PrivateSpaceDisplay.List -> {
                 privateListOpen = false
                 actions.closePrivateSpace()
                 workListOpen = !workListOpen
@@ -847,7 +852,7 @@ internal fun LauncherScreen(
         }
     }
     val dragFolder: (LauncherFolder, Rect, Boolean) -> Unit = { folder, bounds, expanded ->
-        val canRevealPrivateFolder = uiState.settings.privateSpace.display == PrivateSpaceDisplay.Folder &&
+        val canRevealPrivateFolder = (!drawerOpen || uiState.settings.privateSpace.display == PrivateSpaceDisplay.Folder) &&
             uiState.privateContentVisible && uiState.isDefaultHome != false
         // Once its contents are available, a private folder uses the same live
         // reveal/reversal as ordinary folders. Defer only the credential UI or

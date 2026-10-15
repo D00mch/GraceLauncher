@@ -41,6 +41,8 @@ data class LauncherApp(
     val originalIconColor: Int? = null,
     /** Inline stacks still need a distinct icon in editors and selection lists. */
     val isAppStack: Boolean = false,
+    /** Original profile artwork survives pack/design changes and temporary quiet mode. */
+    val profileIconSource: com.galaxyrio.gracelauncher.data.icons.ProfileIconSource? = null,
 ) {
     val key: String = folderId?.let { "folder:$it" } ?: shortcut?.key
         ?: userSerial?.let { "profile:$it:${componentName.flattenToString()}" } ?: componentName.flattenToString()

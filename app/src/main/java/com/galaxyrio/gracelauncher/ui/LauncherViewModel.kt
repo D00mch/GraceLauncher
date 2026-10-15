@@ -148,6 +148,11 @@ data class LauncherUiState(
     val privateFolder: LauncherFolder get() = settings.privateSpace.folder(privateSpaceApps)
     val workProfileApps: List<LauncherApp> get() = settings.workProfile.orderedApps(apps.filter { it.isWorkProfile && it.shortcut == null })
     val workFolder: LauncherFolder get() = settings.workProfile.folder(workProfileApps, WorkProfileFolderId)
+    // Locking/pausing a profile does not remove its pinned folder; only its contents are protected.
+    val canFavoritePrivateSpace: Boolean get() = !isLoadingSettings && !settingsLoadFailed &&
+        settings.privateSpace.enabled && privateSpace.supported && privateSpace.user != null
+    val canFavoriteWorkProfile: Boolean get() = !isLoadingSettings && !settingsLoadFailed &&
+        settings.workProfile.enabled && workProfiles.isNotEmpty()
     val privateContentVisible: Boolean get() = !isLoadingSettings && !settingsLoadFailed && settings.privateSpace.enabled &&
         privateSpace.user != null && (settings.privateSpace.exposesApps || (privateSpace.accessible && !privateSpace.locked))
     val privateSpaceApps: List<LauncherApp> get() = if (privateContentVisible)
@@ -236,11 +241,22 @@ data class LauncherUiState(
             return (favoriteOrder + favorites.keys).distinct().mapNotNull(favorites::get)
         }
 
-    /** Folder placement owns membership; the shared order only determines position. */
+    /** User folders use placement; built-in profile folders use stable favorite keys. */
+    val favoriteFolders: List<LauncherFolder>
+        get() {
+            if (isLoadingSettings || settingsLoadFailed) return emptyList()
+            return buildList {
+                addAll(folders.filter { it.placement.inFavorites })
+                if (canFavoritePrivateSpace && PrivateSpaceFolderKey in favoriteKeys) add(privateFolder)
+                if (canFavoriteWorkProfile && WorkProfileFolderKey in favoriteKeys) add(workFolder)
+            }
+        }
+
+    /** Every kind of favorite shares the same persisted ordering. */
     val favoriteItems: List<LauncherApp>
         get() {
             if (isLoadingSettings || settingsLoadFailed) return emptyList()
-            val items = (favoriteApps + folders.filter { it.placement.inFavorites }.map(::folderItem))
+            val items = (favoriteApps + favoriteFolders.map(::folderItem))
                 .associateBy(LauncherApp::key)
             // Existing folders keep their old position at the end until reordered.
             return (favoriteOrder + items.keys).distinct().mapNotNull(items::get)
@@ -252,6 +268,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val appRepository = AppRepository(application, iconPacks)
     private val privateAppCache = PrivateAppCache(application)
     private var privateRawApps: List<LauncherApp> = emptyList()
+    private var privateSavedApps: List<LauncherApp> = emptyList()
     private var privateRawSerial: Long = -1
     val privateSpaceController = PrivateSpaceController.get(application)
     private val calendarRepository = CalendarRepository(application)
@@ -296,11 +313,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val launcherApps = application.getSystemService(LauncherApps::class.java)
     private val profilePackages = object : LauncherApps.Callback() {
         private fun refresh(user: UserHandle) { if (user != Process.myUserHandle()) refreshApps() }
-        override fun onPackageAdded(packageName: String, user: UserHandle) = refresh(user)
-        override fun onPackageRemoved(packageName: String, user: UserHandle) = refresh(user)
-        override fun onPackageChanged(packageName: String, user: UserHandle) = refresh(user)
-        override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = refresh(user)
-        override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = refresh(user)
+        private fun changed(user: UserHandle, packages: Collection<String>) {
+            appRepository.invalidateProfileApps(user, packages)
+            refresh(user)
+        }
+        override fun onPackageAdded(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
+        override fun onPackageRemoved(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
+        override fun onPackageChanged(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
+        override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
+            if (replacing) changed(user, packageNames.toList()) else refresh(user)
+        }
+        override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
+            if (replacing) changed(user, packageNames.toList()) else refresh(user)
+        }
     }
 
     init {
@@ -423,7 +448,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(isDefaultHome = isDefaultHome) }
         // Wait for the stored pack choice: do not flash system icons on cold start.
         if (!itemsReady || _uiState.value.isLoadingSettings || _uiState.value.settingsLoadFailed) return
+        // Private icons must follow appearance changes even if another inventory
+        // fails or prefetch is slow. Locked profiles defer this work until opened.
+        refreshPrivateApps()
         appLoadJob?.cancel()
+        val iconSettings = _uiState.value.settings
+        val snapshot = itemsSnapshot
         appLoadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(isLoadingApps = true, appLoadFailed = false, isLoadingIconPacks = true, hasShortcutAccess = shortcutRepository.hasAccess())
@@ -435,7 +465,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 if (error is CancellationException) throw error
                 _uiState.update { it.copy(isLoadingIconPacks = false, iconPacksLoadFailed = true) }
             }
-            val selectedPacks = _uiState.value.settings.enabledIconPackPackages
+            val selectedPacks = iconSettings.enabledIconPackPackages
             val availablePacks = selectedPacks.mapNotNull { iconPacks.load(it) }
             val status = when {
                 selectedPacks.isEmpty() -> IconPackStatus.System
@@ -446,8 +476,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             runCatching { appRepository.loadApps(selectedPacks) + appRepository.loadWorkApps(workProfiles, selectedPacks) }
                 .onSuccess { apps ->
                     val renames = preferences.renames()
-                    val snapshot = itemsSnapshot
-                    val iconSettings = _uiState.value.settings
                     suspend fun decorate(app: LauncherApp): LauncherApp = itemIcons.applyDesign(app, snapshot.icons[app.key], iconSettings.iconDesign, iconSettings, preferences.themedIcons)
                         .copy(label = renames[app.key] ?: app.originalLabel, showWorkIndicator = iconSettings.workProfile.showIndicator)
                     val shortcuts = snapshot.shortcuts.mapNotNull { saved ->
@@ -498,7 +526,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                         )
                     }
                     shortcutRepository.prefetch(_uiState.value.favoriteApps)
-                    refreshPrivateApps()
                 }
                 .onFailure {
                     if (it is CancellationException) throw it
@@ -510,6 +537,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private fun refreshPrivateApps() {
         privateAppLoadJob?.cancel()
         val state = _uiState.value
+        val snapshot = itemsSnapshot
         val profile = state.privateSpace
         val user = profile.user
         if (user == null || !state.settings.privateSpace.enabled || !itemsReady || state.isLoadingSettings || state.settingsLoadFailed ||
@@ -523,6 +551,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val settings = state.settings
                 if (privateRawSerial != profile.serial) {
                     privateRawApps = privateAppCache.load(user, profile.serial)
+                    privateSavedApps = privateRawApps
                     privateRawSerial = profile.serial
                 }
                 // This query never disables quiet mode or opens a credential UI.
@@ -532,9 +561,19 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     if (queried.isNotEmpty() || !profile.locked) {
                         val previous = privateRawApps.associateBy(LauncherApp::key)
                         privateRawApps = queried.map { app ->
-                            if (app.icon != null) app else app.copy(icon = previous[app.key]?.icon, monochromeIcon = previous[app.key]?.monochromeIcon)
+                            if (app.icon != null) app else app.copy(icon = previous[app.key]?.icon,
+                                monochromeIcon = previous[app.key]?.monochromeIcon,
+                                profileIconSource = previous[app.key]?.profileIconSource,
+                                originalIconColor = previous[app.key]?.originalIconColor)
                         }
-                        try { privateAppCache.save(profile.serial, privateRawApps) }
+                        // Opening/unlocking or changing a theme isn't a change to
+                        // source artwork. Avoid recompressing every PNG and writing it again.
+                        try {
+                            if (privateRawApps != privateSavedApps) {
+                                privateAppCache.save(profile.serial, privateRawApps)
+                                privateSavedApps = privateRawApps
+                            }
+                        }
                         catch (error: Exception) {
                             if (error is CancellationException) throw error
                             Log.w("LauncherViewModel", "Unable to cache private app inventory", error)
@@ -546,9 +585,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 }
                 val packed = appRepository.applyPrivateIconPacks(privateRawApps, settings.enabledIconPackPackages)
                 val apps = packed.map { app ->
-                    itemIcons.applyDesign(app, itemsSnapshot.icons[app.key], settings.iconDesign, settings, preferences.themedIcons)
+                    itemIcons.applyDesign(app, snapshot.icons[app.key], settings.iconDesign, settings, preferences.themedIcons)
                 }
-                val savedShortcuts = itemsSnapshot.shortcuts.filter { it.itemKey.startsWith("profile:${profile.serial}:shortcut:") }
+                val savedShortcuts = snapshot.shortcuts.filter { it.itemKey.startsWith("profile:${profile.serial}:shortcut:") }
                     .mapNotNull { saved ->
                         val owner = packed.firstOrNull { it.componentName.flattenToString() == saved.activity }
                             ?: packed.firstOrNull { it.packageName == saved.packageName } ?: return@mapNotNull null
@@ -556,7 +595,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                         val shortcut = current ?: LauncherShortcut(saved.shortcutId, saved.packageName, saved.label, owner.icon,
                             owner.componentName, user = user, userSerial = profile.serial, isPrivateSpace = true)
                         val app = shortcut.asApp(owner)
-                        itemIcons.applyDesign(app, itemsSnapshot.icons[app.key], settings.iconDesign, settings, preferences.themedIcons)
+                        itemIcons.applyDesign(app, snapshot.icons[app.key], settings.iconDesign, settings, preferences.themedIcons)
                     }
                 val renames = preferences.renames()
                 // Cache visibility is determined by settings; never publish another profile's inventory.
@@ -965,7 +1004,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleFavorite(app: LauncherApp): Boolean {
-        if (app.folderId != null) {
+        val state = _uiState.value
+        val profileAvailable = when (app.folderId) {
+            PrivateSpaceFolderId -> state.canFavoritePrivateSpace
+            WorkProfileFolderId -> state.canFavoriteWorkProfile
+            else -> null
+        }
+        if (profileAvailable == false) return app.key in state.favoriteKeys
+        if (app.folderId != null && profileAvailable == null) {
             val folder = _uiState.value.folders.firstOrNull { it.id == app.folderId } ?: return false
             val favorite = !folder.placement.inFavorites
             persistSettings { settingsRepository.setFolderFavorites(mapOf(folder.id to favorite)) }
@@ -982,7 +1028,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
         val updated = favoritesStore.toggle(app.key, currentFavoriteOrder())
         _uiState.update { it.copy(favoriteKeys = updated.toSet(), favoriteOrder = updated) }
-        if (app.key in updated) prepareShortcuts(app)
+        if (app.folderId == null && app.key in updated) prepareShortcuts(app)
         return app.key in updated
     }
 

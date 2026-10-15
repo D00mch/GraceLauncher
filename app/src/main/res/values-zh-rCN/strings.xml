@@ -193,6 +193,10 @@
     <!-- 收藏 -->
     <string name="favorites_selected">已选择</string>
     <string name="favorites_all_apps">所有应用</string>
+    <string name="favorites_shortcuts_app_group">快捷方式与应用分组</string>
+    <string name="favorites_add_shortcut">添加快捷方式</string>
+    <string name="favorites_add_folder">添加文件夹</string>
+    <string name="favorites_add_app_stack">添加应用堆叠</string>
     <string name="favorites_empty">从下方选择应用、快捷方式或文件夹，将它们添加到桌面。</string>
     <string name="favorites_reorder">调整%1$s的顺序</string>
     <string name="favorites_move_up">上移</string>

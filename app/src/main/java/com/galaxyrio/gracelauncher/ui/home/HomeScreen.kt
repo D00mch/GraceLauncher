@@ -130,6 +130,7 @@ fun HomeScreen(
     }
     val event = if (uiState.settings.calendarAgenda) nextVisibleEvent(uiState.events, now) else null
     val favorites = uiState.favoriteItems
+    val favoriteFolders = uiState.favoriteFolders.associateBy { it.id }
     var idleMediaDismissed by rememberSaveable(uiState.settings.mediaAlwaysVisible, uiState.settings.mediaPlayer) { mutableStateOf(false) }
     LaunchedEffect(uiState.homeMedia?.sessionId, uiState.homeMedia?.revision) {
         if (uiState.homeMedia != null) idleMediaDismissed = false
@@ -246,7 +247,7 @@ fun HomeScreen(
             Spacer(Modifier.height(2.dp))
         }
         items(favorites, key = LauncherApp::key, contentType = { if (it.folderId == null) "app" else "folder" }) { app ->
-            val folder = app.folderId?.let { id -> uiState.folders.firstOrNull { it.id == id } }
+            val folder = app.folderId?.let(favoriteFolders::get)
             if (folder?.isAppStack == true) AppStack(folder, uiState,
                 onLaunch = { item, bounds -> rowGestures.onLaunchAt?.invoke(item, bounds) ?: onLaunchApp(item) },
                 onDetails = onAppDetails, onEdit = { onEditFolder(folder) },

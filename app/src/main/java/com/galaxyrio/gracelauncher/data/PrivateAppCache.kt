@@ -10,6 +10,7 @@ import android.util.Base64
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.galaxyrio.gracelauncher.data.icons.ProfileIconSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -32,11 +33,16 @@ class PrivateAppCache(context: Context) {
                 (0 until entries.length()).mapNotNull { index ->
                     val entry = entries.getJSONObject(index)
                     val component = ComponentName.unflattenFromString(entry.getString("component")) ?: return@mapNotNull null
-                    LauncherApp(component, entry.getString("label"), decodeIcon(entry.optString("icon")),
-                        monochromeIcon = decodeIcon(entry.optString("monochrome")),
+                    val icon = decodeIcon(entry.optString("icon"))
+                    val monochrome = decodeIcon(entry.optString("monochrome"))
+                    LauncherApp(component, entry.getString("label"), icon,
+                        monochromeIcon = monochrome,
                         monochromeScale = entry.optDouble("scale", 1.4).toFloat(),
                         isSystemApp = entry.optBoolean("system"), isAdaptiveIcon = entry.optBoolean("adaptive"),
-                        user = user, userSerial = serial, isPrivateSpace = true)
+                        originalIconColor = if (entry.has("originalColor")) entry.getInt("originalColor") else null,
+                        firstInstallTime = entry.optLong("installedAt"),
+                        user = user, userSerial = serial, isPrivateSpace = true,
+                        profileIconSource = ProfileIconSource.fromCache(icon, monochrome))
                 }
             }.getOrDefault(emptyList())
         }
@@ -48,7 +54,8 @@ class PrivateAppCache(context: Context) {
             apps.forEach { app ->
                 entries.put(JSONObject().put("component", app.componentName.flattenToString()).put("label", app.originalLabel)
                     .put("icon", encodeIcon(app.icon)).put("monochrome", encodeIcon(app.monochromeIcon))
-                    .put("scale", app.monochromeScale).put("system", app.isSystemApp).put("adaptive", app.isAdaptiveIcon))
+                    .put("scale", app.monochromeScale).put("system", app.isSystemApp).put("adaptive", app.isAdaptiveIcon)
+                    .put("installedAt", app.firstInstallTime).apply { app.originalIconColor?.let { put("originalColor", it) } })
             }
             val bytes = JSONObject().put("serial", serial).put("apps", entries).toString().toByteArray(Charsets.UTF_8)
             val stream = file.startWrite()

@@ -172,7 +172,7 @@ internal fun LauncherOverlays(
         val isRecent = overlay.folder.id == RecentlyInstalledFolderId
         val folder = when {
             isPrivate -> uiState.privateFolder.takeIf { uiState.privateContentVisible }
-            isWork -> uiState.workFolder.takeIf { uiState.workProfiles.isNotEmpty() }
+            isWork -> uiState.workFolder.takeIf { uiState.settings.workProfile.enabled && uiState.workProfiles.isNotEmpty() }
             isRecent -> uiState.recentlyInstalledFolder(stringResource(R.string.recently_installed))
                 .takeIf { uiState.settings.listAppearance.showRecentlyInstalled }
             else -> uiState.folders.firstOrNull { it.id == overlay.folder.id }

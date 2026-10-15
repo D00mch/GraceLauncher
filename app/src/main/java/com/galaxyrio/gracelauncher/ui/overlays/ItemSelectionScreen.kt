@@ -47,6 +47,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private data class SelectionEntry(val key: String, val label: String, val app: LauncherApp? = null, val widget: HomeLayout? = null)
+private data class SelectionOption(val entry: SelectionEntry, val checked: Boolean, val enabled: Boolean)
 
 @Composable
 internal fun ProfileEditorScreen(owner: LauncherApp, uiState: LauncherUiState, actions: LauncherActions,
@@ -97,6 +98,12 @@ internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions,
         onAddShortcut = { choosingShortcut = true },
         onAddFolder = { choosingFolders = true },
         onAddStack = { choosingStacks = true },
+        appGroupChoices = listOf(
+            SelectionOption(SelectionEntry(PrivateSpaceFolderKey, stringResource(R.string.private_space_title), uiState.folderItem(uiState.privateFolder)),
+                PrivateSpaceFolderKey in uiState.favoriteKeys, uiState.canFavoritePrivateSpace),
+            SelectionOption(SelectionEntry(WorkProfileFolderKey, stringResource(R.string.work_profile_title), uiState.folderItem(uiState.workFolder)),
+                WorkProfileFolderKey in uiState.favoriteKeys, uiState.canFavoriteWorkProfile),
+        ),
     )
 }
 
@@ -182,6 +189,7 @@ private fun ItemSelectionScreen(
     onAddShortcut: (() -> Unit)? = null,
     onAddFolder: (() -> Unit)? = null,
     onAddStack: (() -> Unit)? = null,
+    appGroupChoices: List<SelectionOption>? = null,
     header: (@Composable () -> Unit)? = null,
     reorderOnly: Boolean = false,
     loading: Boolean = false,
@@ -293,23 +301,42 @@ private fun ItemSelectionScreen(
                     AddSelectionContent("popup_add_widget", enabled, onAddWidget)
                 }
             }
+            if (appGroupChoices != null) item(key = "app_groups_header", contentType = "header") {
+                SelectionHeading(stringResource(R.string.favorites_shortcuts_app_group), "${tag}_app_groups")
+            }
             if (onAddShortcut != null) {
-                item(key = "add_shortcuts_header", contentType = "header") {
+                if (appGroupChoices == null) item(key = "add_shortcuts_header", contentType = "header") {
                     SelectionHeading(stringResource(R.string.shortcuts_title), "${tag}_shortcuts")
                 }
-                item(key = "add_shortcut") { AddSelectionContent("${tag}_add_shortcut", enabled, onAddShortcut) }
+                item(key = "add_shortcut") {
+                    AddSelectionContent("${tag}_add_shortcut", enabled, onAddShortcut,
+                        stringResource(if (appGroupChoices != null) R.string.favorites_add_shortcut else R.string.popup_add_new))
+                }
             }
             if (onAddFolder != null) {
-                item(key = "folders_header", contentType = "header") {
+                if (appGroupChoices == null) item(key = "folders_header", contentType = "header") {
                     SelectionHeading(stringResource(R.string.settings_folders), "${tag}_folders")
                 }
-                item(key = "add_folder") { AddSelectionContent("${tag}_add_folder", enabled, onAddFolder) }
+                item(key = "add_folder") {
+                    AddSelectionContent("${tag}_add_folder", enabled, onAddFolder,
+                        stringResource(if (appGroupChoices != null) R.string.favorites_add_folder else R.string.popup_add_new))
+                }
             }
             if (onAddStack != null) {
-                item(key = "stacks_header", contentType = "header") {
+                if (appGroupChoices == null) item(key = "stacks_header", contentType = "header") {
                     SelectionHeading(stringResource(R.string.app_stacks_title), "${tag}_stacks")
                 }
-                item(key = "add_stack") { AddSelectionContent("${tag}_add_stack", enabled, onAddStack) }
+                item(key = "add_stack") {
+                    AddSelectionContent("${tag}_add_stack", enabled, onAddStack,
+                        stringResource(if (appGroupChoices != null) R.string.favorites_add_app_stack else R.string.popup_add_new))
+                }
+            }
+            appGroupChoices?.forEach { choice ->
+                item(key = "app_group:${choice.entry.key}") {
+                    SelectionChoice(choice.entry, choice.checked, "${tag}_group:${choice.entry.key}",
+                        enabled && choice.enabled && reorder.draggingKey == null,
+                        { choice.entry.app?.let(onToggle) })
+                }
             }
             if (!reorderOnly) item(key = "all_header", contentType = "header") {
                 SelectionHeading(stringResource(R.string.favorites_all_apps), "${tag}_all_apps")
@@ -319,7 +346,8 @@ private fun ItemSelectionScreen(
 }
 
 @Composable
-private fun AddSelectionContent(tag: String, enabled: Boolean, onClick: () -> Unit) {
+private fun AddSelectionContent(tag: String, enabled: Boolean, onClick: () -> Unit,
+    label: String = stringResource(R.string.popup_add_new)) {
     Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).testTag(tag).clip(RoundedCornerShape(16.dp))
         .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
         .padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -327,7 +355,7 @@ private fun AddSelectionContent(tag: String, enabled: Boolean, onClick: () -> Un
             Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) { LauncherIcon(LauncherSymbol.Plus) }
         }
         Spacer(Modifier.width(16.dp))
-        Text(stringResource(R.string.popup_add_new))
+        Text(label)
     }
 }
 

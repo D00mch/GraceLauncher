@@ -76,4 +76,16 @@ class FavoritesStoreTest {
         assertEquals(keys.reversed(), flow.value.favoriteApps.map(LauncherApp::key))
         assertEquals(keys.toSet(), flow.value.favoriteKeys)
     }
+
+    @Test fun profileFolderKeysPersistAndReorderWithAppsWithoutBeingPruned() {
+        val privateKey = com.galaxyrio.gracelauncher.data.PrivateSpaceFolderKey
+        val workKey = com.galaxyrio.gracelauncher.data.WorkProfileFolderKey
+        val store = FavoritesStore(prefs)
+        val withPrivate = store.toggle(privateKey, listOf(keys[0]))
+        val both = store.toggle(workKey, withPrivate)
+        val reordered = store.reorder(listOf(workKey, keys[0], privateKey), both)
+        assertEquals(listOf(workKey, keys[0], privateKey), reordered)
+        assertEquals(reordered, FavoritesStore(prefs).favoritesFor(apps))
+        assertEquals(listOf(workKey, keys[0]), store.toggle(privateKey, reordered))
+    }
 }
