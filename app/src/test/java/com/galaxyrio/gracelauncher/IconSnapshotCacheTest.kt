@@ -5,63 +5,49 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class IconSnapshotCacheTest {
-    private data class Signature(val source: String = "original", val packs: List<String> = emptyList(),
-        val theme: String = "light", val override: String? = null)
-
     @Test fun reopeningAnUnchangedProfileReusesTheSameResult() {
-        val cache = IconSnapshotCache<Signature, Any>()
+        val cache = IconSnapshotCache<Int, Any>()
         val result = Any()
-        cache.put("profile:10:app", Signature(), result)
-        repeat(20) { assertSame(result, cache.get("profile:10:app", Signature())) }
+        cache.put("profile:10:app", 1, result)
+        repeat(20) { assertSame(result, cache.get("profile:10:app", 1)) }
     }
 
-    @Test fun allVisualInputsInvalidateTheOldResult() {
-        val cache = IconSnapshotCache<Signature, Any>()
-        val original = Signature(packs = listOf("pack-a", "pack-b"))
-        cache.put("profile:10:app", original, Any())
-        listOf(original.copy(source = "updated-app"), original.copy(packs = listOf("pack-b", "pack-a")),
-            original.copy(packs = emptyList()), original.copy(theme = "dark"), original.copy(override = "custom"))
-            .forEach { assertNull(cache.get("profile:10:app", it)) }
+    @Test fun changedRevisionsDoNotReuseOldResults() {
+        val cache = IconSnapshotCache<Int, Any>()
+        cache.put("profile:10:app", 1, Any())
+        assertNull(cache.get("profile:10:app", 2))
     }
 
     @Test fun changingOneIconDoesNotInvalidateOtherProfilesOrApps() {
-        val cache = IconSnapshotCache<Signature, Any>()
+        val cache = IconSnapshotCache<Int, Any>()
         val other = Any()
-        cache.put("profile:10:app", Signature(), Any())
-        cache.put("profile:11:app", Signature(), other)
-        cache.put("profile:10:app", Signature(override = "custom"), Any())
-        assertNull(cache.get("profile:10:app", Signature()))
-        assertSame(other, cache.get("profile:11:app", Signature()))
-        assertNull(cache.get("personal:app", Signature()))
+        cache.put("profile:10:app", 1, Any())
+        cache.put("profile:11:app", 1, other)
+        cache.put("profile:10:app", 2, Any())
+        assertNull(cache.get("profile:10:app", 1))
+        assertSame(other, cache.get("profile:11:app", 1))
+        assertNull(cache.get("personal:app", 1))
     }
 
     @Test fun onlyTheLatestAppearanceIsRetainedPerItem() {
-        val cache = IconSnapshotCache<Signature, Any>(2)
+        val cache = IconSnapshotCache<Int, Any>(2)
         val other = Any()
         val latest = Any()
-        cache.put("other", Signature(), other)
-        repeat(20) { cache.put("app", Signature(theme = "$it"), latest) }
-        assertNull(cache.get("app", Signature(theme = "18")))
-        assertSame(latest, cache.get("app", Signature(theme = "19")))
-        assertSame(other, cache.get("other", Signature()))
+        cache.put("other", 1, other)
+        repeat(20) { cache.put("app", it, latest) }
+        assertNull(cache.get("app", 18))
+        assertSame(latest, cache.get("app", 19))
+        assertSame(other, cache.get("other", 1))
     }
 
-    @Test fun entryCountIsBounded() {
-        val cache = IconSnapshotCache<Int, String>(2)
-        cache.put("a", 1, "a")
-        cache.put("b", 1, "b")
-        cache.put("c", 1, "c")
-        assertEquals("c", cache.get("c", 1))
-        assertEquals(2, listOf("a", "b", "c").count { cache.get(it, 1) != null })
-    }
-
-    @Test fun bitmapBudgetIsEnforcedBeforeTheCountLimit() {
-        val cache = IconSnapshotCache<Int, ByteArray>(capacity = 100, maxBytes = 10, sizeOf = { it.size })
-        cache.put("a", 1, ByteArray(4))
-        cache.put("b", 1, ByteArray(4))
-        cache.put("c", 1, ByteArray(4))
-        assertNotNull(cache.get("c", 1))
-        assertEquals(2, listOf("a", "b", "c").count { cache.get(it, 1) != null })
+    @Test fun entryCountAndBitmapBudgetAreBounded() {
+        for ((capacity, budget) in listOf(2 to Int.MAX_VALUE, 100 to 10)) {
+            val cache = IconSnapshotCache<Int, ByteArray>(capacity = capacity, maxBytes = budget, sizeOf = { it.size })
+            val keys = listOf("a", "b", "c")
+            keys.forEach { cache.put(it, 1, ByteArray(4)) }
+            assertNotNull("capacity=$capacity, budget=$budget", cache.get("c", 1))
+            assertEquals("capacity=$capacity, budget=$budget", 2, keys.count { cache.get(it, 1) != null })
+        }
     }
 
     @Test fun replacingAnIconReleasesItsOldBudgetAndOversizedImagesAreNotRetained() {
