@@ -1038,6 +1038,8 @@ internal fun LauncherScreen(
             letters = model.letters,
             selectedLetter = if (drawerOpen) selectedLetter else null,
             height = railLayout.heightDp.dp,
+            topOffset = railLayout.topDp.dp,
+            touchHeight = maxHeight,
             onLetterSelected = { letter ->
                 if (letter == null) {
                     drawerOpen = false
@@ -1051,7 +1053,7 @@ internal fun LauncherScreen(
                     drawerOpen = true
                 }
             },
-            modifier = Modifier.align(Alignment.TopEnd).offset(y = railLayout.topDp.dp)
+            modifier = Modifier.align(Alignment.TopEnd)
                 .graceReveal(drawerTransition.takeIf { uiState.settings.hideAlphabet }, reveal = true),
             onScrubFinished = finishScrubbing,
             autoHide = uiState.settings.hideAlphabet && !drawerOpen,

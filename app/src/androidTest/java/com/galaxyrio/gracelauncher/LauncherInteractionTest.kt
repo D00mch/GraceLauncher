@@ -136,25 +136,30 @@ class LauncherInteractionTest {
     fun oneUnbrokenDragOpensScrubsReversesAndReturnsHome() {
         showLauncher()
         val rail = compose.onNodeWithTag("alphabet_rail")
-        // Four cells: home, A, C, Z. Do not release the pointer between pages.
-        rail.performTouchInput { down(Offset(centerX, height * 0.375f)) }
+        // Touch strips span the screen; target the letters, not fractions of the strip.
+        val railTop = rail.fetchSemanticsNode().boundsInRoot.top
+        val letterY = listOf("A", "C", "Z").associateWith {
+            compose.onNodeWithTag("alphabet:$it").fetchSemanticsNode().boundsInRoot.center.y - railTop
+        }
+        val homeY = compose.onNodeWithTag("alphabet_home").fetchSemanticsNode().boundsInRoot.center.y - railTop
+        rail.performTouchInput { down(Offset(centerX, letterY.getValue("A"))) }
         compose.onNodeWithTag("section:A").assertIsDisplayed()
 
-        rail.performTouchInput { moveTo(Offset(centerX, height * 0.625f), delayMillis = 250) }
+        rail.performTouchInput { moveTo(Offset(centerX, letterY.getValue("C")), delayMillis = 250) }
         compose.onNodeWithTag("section:C").assertIsDisplayed()
         compose.onNodeWithTag("section:A").assertDoesNotExist()
         compose.onNodeWithTag("section:Z").assertDoesNotExist()
         saveScreenshot("drawer-wave.png")
 
-        rail.performTouchInput { moveTo(Offset(centerX, height * 0.875f), delayMillis = 250) }
+        rail.performTouchInput { moveTo(Offset(centerX, letterY.getValue("Z")), delayMillis = 250) }
         compose.onNodeWithTag("section:Z").assertIsDisplayed()
         compose.onNodeWithTag("section:C").assertDoesNotExist()
 
-        rail.performTouchInput { moveTo(Offset(centerX, height * 0.125f), delayMillis = 250) }
+        rail.performTouchInput { moveTo(Offset(centerX, homeY), delayMillis = 250) }
         compose.onNodeWithTag("home_clock").assertIsDisplayed()
 
         rail.performTouchInput {
-            moveTo(Offset(centerX, height * 0.625f), delayMillis = 250)
+            moveTo(Offset(centerX, letterY.getValue("C")), delayMillis = 250)
             up()
         }
         compose.onNodeWithTag("section:C").assertIsDisplayed()
@@ -197,7 +202,8 @@ class LauncherInteractionTest {
     fun cancellingHeldAlphabetSelectionRestoresTheCompleteList() {
         showLauncher()
         val rail = compose.onNodeWithTag("alphabet_rail")
-        rail.performTouchInput { down(Offset(centerX, height * 0.625f)) }
+        val y = compose.onNodeWithTag("alphabet:C").fetchSemanticsNode().boundsInRoot.center.y - rail.fetchSemanticsNode().boundsInRoot.top
+        rail.performTouchInput { down(Offset(centerX, y)) }
         compose.onNodeWithTag("section:C").assertIsDisplayed()
         compose.onNodeWithTag("section:A").assertDoesNotExist()
         compose.onNodeWithTag("section:Z").assertDoesNotExist()

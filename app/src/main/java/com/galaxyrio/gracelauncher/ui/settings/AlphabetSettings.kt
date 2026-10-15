@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.AbsoluteAlignment
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -192,7 +191,7 @@ private fun AlphabetPreview(uiState: LauncherUiState, draft: AlphabetAppearance,
     var previewTop by remember { mutableFloatStateOf(0f) }
     var positioned by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<String?>(null) }
-    Box(modifier.testTag("alphabet_preview").onGloballyPositioned {
+    BoxWithConstraints(modifier.testTag("alphabet_preview").onGloballyPositioned {
         previewTop = with(density) { it.positionInWindow().y.toDp().value }
         positioned = true
     }.drawWithContent {
@@ -206,8 +205,8 @@ private fun AlphabetPreview(uiState: LauncherUiState, draft: AlphabetAppearance,
             // system. Preserve actual letter spacing, glyph sizes and indicator geometry.
             if (positioned) AlphabetRail(letters, selected, layout.heightDp.dp,
                 onLetterSelected = { selected = it }, alphabet = draft,
-                modifier = Modifier.align(AbsoluteAlignment.TopRight).offset(y = (viewportTop + layout.topDp - previewTop).dp)
-                    .wrapContentHeight(Alignment.Top, unbounded = true))
+                topOffset = (viewportTop + layout.topDp - previewTop).dp, touchHeight = maxHeight,
+                modifier = Modifier.align(AbsoluteAlignment.TopRight))
         }
     }
 }

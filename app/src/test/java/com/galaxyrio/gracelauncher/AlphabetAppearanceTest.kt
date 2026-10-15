@@ -13,7 +13,7 @@ class AlphabetAppearanceTest {
         assertEquals(14, value.fontSize)
         assertEquals(IconShape.Circle, value.indicatorShape)
         assertEquals(85, value.pebbleRoundness)
-        assertFalse(value.freeMovement)
+        assertTrue(value.freeMovement)
         assertNull(value.fontId)
         assertNull(value.fontColor)
         assertNull(value.topPercent)

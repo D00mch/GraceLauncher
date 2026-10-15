@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -97,6 +96,8 @@ fun AlphabetRail(
     onWallpaper: Boolean = true,
     leftTouchEnabled: Boolean = false,
     alphabet: AlphabetAppearance? = null,
+    topOffset: Dp = 0.dp,
+    touchHeight: Dp = height,
 ) {
     if (letters.isEmpty()) return
     val appearance = LocalLauncherAppearance.current
@@ -118,7 +119,10 @@ fun AlphabetRail(
     val currentOnScrubFinished by rememberUpdatedState(onScrubFinished)
     val haptics by rememberUpdatedState(LocalHapticFeedback.current)
     val density = LocalDensity.current
-    var railHeightPx by remember { mutableIntStateOf(1) }
+    // The desktop's edge touch strips span the viewport, independently of the
+    // alphabet's configured position/spacing. Pickers keep the compact defaults.
+    val railHeightPx by rememberUpdatedState(with(density) { height.roundToPx().coerceAtLeast(1) })
+    val railTopPx by rememberUpdatedState(with(density) { topOffset.toPx() })
     val cellHeight = height / entries.size
     val cellHeightPx = with(density) { cellHeight.toPx() }
     val waveRadius = with(density) { 82.dp.toPx() }
@@ -163,8 +167,9 @@ fun AlphabetRail(
                         change.consume()
                         break
                     }
-                    state.drift = alphabetDriftAt(change.position.y, railHeightPx.toFloat(), state.drift, freeMovement)
-                    state.fingerY = (change.position.y - state.drift).coerceIn(0f, railHeightPx.toFloat())
+                    val railY = change.position.y - railTopPx
+                    state.drift = alphabetDriftAt(railY, railHeightPx.toFloat(), state.drift, freeMovement)
+                    state.fingerY = (railY - state.drift).coerceIn(0f, railHeightPx.toFloat())
                     state.fingerX = if (fromLeft) railWidth - change.position.x else change.position.x
                     val index = alphabetIndexAt(
                         y = state.fingerY,
@@ -188,13 +193,12 @@ fun AlphabetRail(
     }
 
     // Two touch regions, one visual rail and one scrub state. No second alphabet is drawn.
-    Box(modifier.then(if (leftTouchEnabled) Modifier.fillMaxWidth() else Modifier.width(48.dp)).height(height)) {
-        if (leftTouchEnabled) Box(Modifier.align(Alignment.TopStart).width(28.dp).height(height)
+    Box(modifier.then(if (leftTouchEnabled) Modifier.fillMaxWidth() else Modifier.width(48.dp)).height(touchHeight)) {
+        if (leftTouchEnabled) Box(Modifier.align(Alignment.TopStart).width(28.dp).height(touchHeight)
             .testTag("alphabet_left_touch").then(touchSurface(true)).clearAndSetSemantics {})
         Box(
-            Modifier.align(Alignment.TopEnd).width(48.dp).height(height)
+            Modifier.align(Alignment.TopEnd).width(48.dp).height(touchHeight)
                 .testTag("alphabet_rail")
-                .onSizeChanged { railHeightPx = it.height.coerceAtLeast(1) }
                 .semantics { contentDescription = railDescription }
                 .then(touchSurface(false)),
         ) {
@@ -209,7 +213,7 @@ fun AlphabetRail(
                     modifier = Modifier
                         .width(48.dp)
                         .height(cellHeight)
-                        .offset { IntOffset(0, (index * cellHeightPx).roundToInt()) }
+                        .offset { IntOffset(0, (railTopPx + index * cellHeightPx).roundToInt()) }
                         .testTag(if (letter == null) "alphabet_home" else "alphabet:$letter")
                         .graphicsLayer {
                             // Fade the glyphs only: keep the same touch surface alive
@@ -269,7 +273,7 @@ fun AlphabetRail(
                         // crowds the rail while it appears or follows the finger.
                         translationX = railWidth / 2f - indicatorSize - railGlyphHalfWidth - indicatorGap -
                             (basePull + extraPull) * wave
-                        translationY = drift + (state.fingerY - indicatorSize / 2f)
+                        translationY = railTopPx + drift + (state.fingerY - indicatorSize / 2f)
                             .coerceIn(0f, (railHeightPx - indicatorSize).coerceAtLeast(0f))
                         alpha = wave
                         scaleX = 0.85f + wave * 0.15f

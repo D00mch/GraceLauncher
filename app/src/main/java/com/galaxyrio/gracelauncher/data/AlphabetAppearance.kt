@@ -14,7 +14,7 @@ data class AlphabetAppearance(
     /** null anchors the bottom and uses the original 18dp step, irrespective of letter count. */
     val topPercent: Int? = null,
     val bottomPercent: Int = 85,
-    val freeMovement: Boolean = false,
+    val freeMovement: Boolean = true,
 ) {
     fun normalized(): AlphabetAppearance {
         val top = topPercent?.coerceIn(0, 99)

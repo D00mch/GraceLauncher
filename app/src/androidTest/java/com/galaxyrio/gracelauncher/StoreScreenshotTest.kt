@@ -35,7 +35,6 @@ import com.galaxyrio.gracelauncher.data.media.MediaSnapshot
 import com.galaxyrio.gracelauncher.platform.HomeWidgetHost
 import com.galaxyrio.gracelauncher.ui.LauncherActions
 import com.galaxyrio.gracelauncher.ui.LauncherScreen
-import com.galaxyrio.gracelauncher.ui.drawer.AppListModel
 import com.galaxyrio.gracelauncher.ui.settings.LauncherSettingsScreen
 import com.galaxyrio.gracelauncher.ui.theme.GraceLauncherTheme
 import java.io.FileInputStream
@@ -153,9 +152,10 @@ class StoreScreenshotTest {
                     }
                     "03" -> compose.onNodeWithTag("home_media_artwork").assertIsDisplayed()
                     "04" -> {
-                        val letters = AppListModel(base.appListApps).letters
-                        compose.onNodeWithTag("alphabet_rail").performTouchInput {
-                            down(Offset(centerX, height * (letters.indexOf("C") + 1.5f) / (letters.size + 1)))
+                        val rail = compose.onNodeWithTag("alphabet_rail")
+                        val y = compose.onNodeWithTag("alphabet:C").fetchSemanticsNode().boundsInRoot.center.y - rail.fetchSemanticsNode().boundsInRoot.top
+                        rail.performTouchInput {
+                            down(Offset(centerX, y))
                             moveBy(Offset(-35f, 0f), delayMillis = 250)
                         }
                         compose.onNodeWithTag("section:C").assertIsDisplayed()

@@ -137,7 +137,7 @@ class DrawerAnchoringTest {
         app('C').assertIsDisplayed()
         val originalHeader = bounds(section('C'))
         val originalApp = bounds(app('C'))
-        withHeldLetter('C', listOf('A', 'B', 'C')) { _, finish ->
+        withHeldLetter('C') { _, finish ->
             assertPositionUnchanged(originalHeader, bounds(section('C')), "Short catalogue C header while held")
             assertPositionUnchanged(originalApp, bounds(app('C')), "Short catalogue C app while held")
             app('A').assertIsNotDisplayed()
@@ -156,8 +156,9 @@ class DrawerAnchoringTest {
         val firstHeader = bounds(section('A'))
         withHeldLetter('D') { rail, finish ->
             listOf('X', 'B', 'M', 'D').forEach { letter ->
+                val y = railY(letter)
                 rail.performTouchInput {
-                    moveTo(Offset(centerX, height * railFraction(letter)), delayMillis = 32)
+                    moveTo(Offset(centerX, y), delayMillis = 32)
                 }
                 section(letter).assertIsDisplayed()
                 if (letter != 'X') {
@@ -239,17 +240,17 @@ class DrawerAnchoringTest {
         assertEquals("$label bottom", before.bottom, after.bottom, 1f)
     }
 
-    private fun railFraction(letter: Char, letters: List<Char> = ('A'..'Z').toList()) =
-        (letters.indexOf(letter) + 1.5f) / (letters.size + 1f)
+    private fun railY(letter: Char) = compose.onNodeWithTag("alphabet:$letter").fetchSemanticsNode().boundsInRoot.center.y -
+        compose.onNodeWithTag("alphabet_rail").fetchSemanticsNode().boundsInRoot.top
 
     private fun withHeldLetter(
         letter: Char,
-        letters: List<Char> = ('A'..'Z').toList(),
         block: (rail: SemanticsNodeInteraction, finish: (cancel: Boolean) -> Unit) -> Unit,
     ) {
         val rail = compose.onNodeWithTag("alphabet_rail")
+        val y = railY(letter)
         var held = true
-        rail.performTouchInput { down(Offset(centerX, height * railFraction(letter, letters))) }
+        rail.performTouchInput { down(Offset(centerX, y)) }
         try {
             block(rail) { cancelGesture ->
                 rail.performTouchInput { if (cancelGesture) cancel() else up() }
