@@ -56,4 +56,15 @@ class CatalogRefreshStateTest {
         assertTrue(state.complete(restored, "original"))
         assertNull(state.pending("original"))
     }
+
+    @Test fun partialLoadCanPublishDataWithoutSuppressingTheNextResumeRetry() {
+        val state = CatalogRefreshState<String>()
+        state.complete(state.start("apps")!!, "apps")
+        state.invalidate()
+        state.start("apps")!!
+        // Failed work-profile/discovery sections leave the load incomplete.
+        val retry = state.start("apps")!!
+        assertTrue(state.complete(retry, "apps"))
+        assertNull(state.pending("apps"))
+    }
 }

@@ -46,27 +46,22 @@ class IconSnapshotCacheTest {
         assertSame(other, cache.get("other", Signature()))
     }
 
-    @Test fun memoryIsBoundedAndRecentlyUsedEntriesSurvive() {
+    @Test fun entryCountIsBounded() {
         val cache = IconSnapshotCache<Int, String>(2)
         cache.put("a", 1, "a")
         cache.put("b", 1, "b")
-        assertEquals("a", cache.get("a", 1))
         cache.put("c", 1, "c")
-        assertNull(cache.get("b", 1))
-        assertEquals("a", cache.get("a", 1))
         assertEquals("c", cache.get("c", 1))
+        assertEquals(2, listOf("a", "b", "c").count { cache.get(it, 1) != null })
     }
 
-    @Test fun bitmapBudgetEvictsTheLeastRecentlyUsedEntryBeforeTheCountLimit() {
+    @Test fun bitmapBudgetIsEnforcedBeforeTheCountLimit() {
         val cache = IconSnapshotCache<Int, ByteArray>(capacity = 100, maxBytes = 10, sizeOf = { it.size })
-        val first = ByteArray(4)
-        cache.put("a", 1, first)
+        cache.put("a", 1, ByteArray(4))
         cache.put("b", 1, ByteArray(4))
-        assertSame(first, cache.get("a", 1))
         cache.put("c", 1, ByteArray(4))
-        assertNull(cache.get("b", 1))
-        assertSame(first, cache.get("a", 1))
         assertNotNull(cache.get("c", 1))
+        assertEquals(2, listOf("a", "b", "c").count { cache.get(it, 1) != null })
     }
 
     @Test fun replacingAnIconReleasesItsOldBudgetAndOversizedImagesAreNotRetained() {
@@ -80,5 +75,23 @@ class IconSnapshotCacheTest {
         assertNull(cache.get("huge", 1))
         assertNotNull(cache.get("a", 2))
         assertNotNull(cache.get("b", 1))
+    }
+
+    @Test fun fullCatalogScansReuseIconsEvenWhenTheCatalogExceedsEitherLimit() {
+        val iconBytes = 144 * 144 * 4
+        for ((apps, budget) in listOf(200 to 16 * 1024 * 1024, 203 to 16 * 1024 * 1024, 257 to Int.MAX_VALUE)) {
+            val cache = IconSnapshotCache<Int, Int>(maxBytes = budget, sizeOf = { iconBytes })
+            val capacity = minOf(256, budget / iconBytes)
+            repeat(5) { pass ->
+                var hits = 0
+                repeat(apps) { key ->
+                    if (cache.get("app:$key", 1) != null) hits++ else cache.put("app:$key", 1, key)
+                }
+                if (pass > 0) {
+                    if (apps <= capacity) assertEquals(apps, hits)
+                    else assertTrue("$apps apps, pass $pass: only $hits hits", hits >= capacity - 1)
+                }
+            }
+        }
     }
 }

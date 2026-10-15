@@ -41,10 +41,6 @@ internal class IconLayers(
     private val normalizedMonochrome by lazy { normalizedMonochrome(foreground) }
     private val invertedMonochrome by lazy { normalizedMonochrome(foreground, invert = true) }
 
-    /** Reserve space for the two lazy masks and tint as well as the original layers. */
-    internal val cacheBytes: Int get() = listOfNotNull(original, background, foreground, monochrome)
-        .distinct().sumOf { it.allocationByteCount } + 3 * original.allocationByteCount
-
     @Synchronized
     fun symbol(foregroundColor: Int?, themeUnsupported: Boolean, invertBackgroundDetection: Boolean = false): Bitmap {
         if (foregroundColor == null || (monochrome == null && !themeUnsupported)) return foreground

@@ -162,7 +162,7 @@ private suspend fun loadWidgetGroups(context: Context, providers: List<AppWidget
         }.sortedWith(compareBy(LauncherLabelOrder) { it.label })
         val app = uiState.allApps.firstOrNull {
             it.shortcut == null && it.packageName == packageName && (it.user ?: android.os.Process.myUserHandle()) == profile
-        } ?: repository.applyPrivateIconPacks(listOf(LauncherApp(widgets.first().provider, badgedLabel, icon)),
+        } ?: repository.applyIconPacks(listOf(LauncherApp(widgets.first().provider, badgedLabel, icon)),
             uiState.settings.enabledIconPackPackages).single()
         WidgetAppGroup("$packageName:$profile", packageName, badgedLabel, app, entries, appInfo?.let(englishLabels::label))
     }.sortedWith(compareBy(LauncherLabelOrder) { it.label })

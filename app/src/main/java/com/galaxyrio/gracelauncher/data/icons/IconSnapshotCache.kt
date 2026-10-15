@@ -16,9 +16,13 @@ internal class IconSnapshotCache<S, V>(private val capacity: Int = 256,
         val size = sizeOf(value).also { require(it >= 0) }
         remove(key)
         if (size > maxBytes) return
+        // Preserve entries needed later in a full catalog scan by evicting the last
+        // visited icon before inserting a miss. LRU would miss every icon once full.
+        while (entries.isNotEmpty() && (entries.size >= capacity || bytes + size > maxBytes)) {
+            remove(entries.keys.last())
+        }
         entries[key] = Entry(signature, value, size)
         bytes += size
-        while (entries.size > capacity || bytes > maxBytes) remove(entries.keys.first())
     }
 
     private fun remove(key: String) {

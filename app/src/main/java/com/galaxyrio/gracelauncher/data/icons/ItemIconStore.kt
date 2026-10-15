@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.IconDesign
-import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
 import com.galaxyrio.gracelauncher.data.LauncherSettings
@@ -44,13 +43,8 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
     private data class RenderSignature(val source: Any?, val choice: ItemIcon,
         val packs: List<Any?>, val theme: Pair<Int, Int>, val dynamic: Pair<Int, Int>,
         val fromApp: Pair<Int, Int>?, val configuration: Configuration, val day: LocalDate)
-    private data class RenderedIcon(val icon: ImageBitmap?, val monochrome: ImageBitmap?, val scale: Float,
-        val packageName: String?, val display: IconDisplaySettings?)
-    private val renderedIcons = IconSnapshotCache<RenderSignature, RenderedIcon>(maxBytes = 16 * 1024 * 1024,
-        sizeOf = { iconBitmapBytes(it.icon, it.monochrome) })
-    private data class LayersSignature(val source: Any, val configuration: Configuration, val day: LocalDate)
-    private val originalLayers = IconSnapshotCache<LayersSignature, IconLayers>(maxBytes = 16 * 1024 * 1024,
-        sizeOf = { it.cacheBytes })
+    private val renderedIcons = IconSnapshotCache<RenderSignature, ImageBitmap>(maxBytes = 16 * 1024 * 1024,
+        sizeOf = { iconBitmapBytes(it) })
 
     private fun imageBitmap(name: String, size: Int): Bitmap? = runCatching {
         val key = "$name:$size"
@@ -143,18 +137,8 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
                     if (size != 144) systemDrawable(app)?.let { return@withContext iconLayers(it, size) }
                     source.layers()?.let { return@withContext it }
                 }
-            }
-            if (app.shortcut == null && choice.kind in setOf("theme", "system", "pack")) {
-                // Personal artwork is retained only in this bounded cache. High-resolution
-                // editor previews read their own layers instead of growing the launcher cache.
-                val signature = app.iconSourceRevision?.takeIf { size == 144 }?.let {
-                    LayersSignature(it, Configuration(context.resources.configuration), LocalDate.now())
-                }
-                if (signature != null) originalLayers.get(app.key, signature)?.let { return@withContext it }
                 val drawable = systemDrawable(app)
-                if (drawable != null) return@withContext iconLayers(drawable, size).also {
-                    if (signature != null) originalLayers.put(app.key, signature, it)
-                }
+                if (drawable != null) return@withContext iconLayers(drawable, size)
             }
             val bitmap = if (choice.kind == "image") imageBitmap(choice.source, size) else null
             (bitmap ?: (app.shortcut?.icon ?: app.icon)?.asAndroidBitmap())?.let {
@@ -232,16 +216,20 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
                 if (choice.design?.background?.fromApp == true || choice.design?.foreground?.fromApp == true)
                     appColors(app.originalIconColor, settings) else null,
                 Configuration(context.resources.configuration), LocalDate.now())
-            val rendered = renderedIcons.get(app.key, signature) ?: apply(app, choice, settings).let {
-                val pixels = RenderedIcon(it.icon, it.monochromeIcon, it.monochromeScale, it.iconPackPackage, it.iconDisplay)
-                // Rendering failures fall back to app.icon; don't memoize that failure.
-                if (it.icon != null && it.icon !== app.icon) renderedIcons.put(app.key, signature, pixels)
-                pixels
+            // A successful design produces only a bitmap. All metadata comes from the
+            // current app/choice, so a cache hit cannot restore old labels or badges.
+            renderedIcons.get(app.key, signature)?.let { icon ->
+                return@withContext app.copy(icon = icon, monochromeIcon = null, iconDisplay = choice.display,
+                    iconPackPackage = when (choice.kind) {
+                        "theme" -> app.themeIconPackPackage
+                        "pack" -> choice.source
+                        else -> null
+                    })
             }
-            // Never reuse labels, shortcuts, badges or profile state from the cache.
-            app.copy(icon = rendered.icon, monochromeIcon = rendered.monochrome,
-                monochromeScale = rendered.scale, iconPackPackage = rendered.packageName,
-                iconDisplay = rendered.display)
+            apply(app, choice, settings).also {
+                // Rendering failures fall back to app.icon; don't memoize that failure.
+                if (it.icon != null && it.icon !== app.icon) renderedIcons.put(app.key, signature, it.icon)
+            }
         }
     }
 

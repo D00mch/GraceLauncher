@@ -31,7 +31,7 @@ class PersonalIconCachingTest {
         assertSame(first.icon, again.icon)
         assertEquals(first.iconSourceRevision, again.iconSourceRevision)
 
-        repository.invalidateProfileApps(Process.myUserHandle(), listOf(context.packageName))
+        repository.invalidateApps(Process.myUserHandle(), listOf(context.packageName))
         val updated = repository.loadApps().ownApp()
         assertNotEquals(first.iconSourceRevision, updated.iconSourceRevision)
     }
@@ -60,13 +60,4 @@ class PersonalIconCachingTest {
         assertEquals(Color.BLUE, blue.icon!!.asAndroidBitmap().getPixel(72, 72))
     }
 
-    @Test fun originalLayersAreSharedAcrossDesignsButNotSourceRevisions() = runBlocking {
-        val repository = AppRepository(context)
-        val own = repository.loadApps().single { it.packageName == context.packageName }
-        val store = ItemIconStore(context, IconPackRepository(context))
-        val first = store.layers(own, ItemIcon.System, LauncherSettings(), 144)
-        assertNotNull(first)
-        assertSame(first, store.layers(own, ItemIcon.System, LauncherSettings(), 144))
-        assertNotSame(first, store.layers(own.copy(iconSourceRevision = "updated"), ItemIcon.System, LauncherSettings(), 144))
-    }
 }
