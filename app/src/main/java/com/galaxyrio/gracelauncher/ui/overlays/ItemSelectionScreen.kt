@@ -151,7 +151,7 @@ internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, act
         header = header,
         shortcutStatus = result.status, onRetry = { retry++ }, onRequestAccess = actions.requestDefaultHome,
         onAddWidget = if (isStack) null else ({ actions.addPopupWidget(owner, shortcuts) }),
-        onAddStack = if (isFolder && !isStack) ({ choosingStacks = true }) else null,
+        onAddStack = if (!isStack) ({ choosingStacks = true }) else null,
         onAddShortcut = { choosingShortcut = true },
         onToggle = { app -> actions.updatePopup(owner, shortcuts) { current ->
             if (current.any { it.key == app.key }) current.filterNot { it.key == app.key } else current + PopupItem(app.key)
