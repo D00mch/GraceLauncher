@@ -25,6 +25,9 @@ import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.ui.settings.LocalSettingsBottomInset
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.sectionForLabel
+import com.galaxyrio.gracelauncher.data.LauncherLabelOrder
+import com.galaxyrio.gracelauncher.data.SearchNames
+import com.galaxyrio.gracelauncher.data.SearchQuery
 import com.galaxyrio.gracelauncher.data.icons.IconPackRepository
 import com.galaxyrio.gracelauncher.ui.components.AlphabetRail
 
@@ -42,12 +45,16 @@ internal fun IconPackGrid(
     val grouped = remember(names, matchedName) {
         names.filterNot { it == matchedName }.groupBy(::sectionForLabel)
             .toSortedMap(compareBy<String> { it == "#" }.thenBy { it })
-            .mapValues { (_, icons) -> icons.sortedWith(String.CASE_INSENSITIVE_ORDER) }
+            .mapValues { (_, icons) -> icons.sortedWith(LauncherLabelOrder) }
     }
     val term = query.trim().replace('_', ' ')
-    val matchedIcon = matchedName?.takeIf { term.isEmpty() || it.replace('_', ' ').contains(term, true) }
-    val sections = remember(grouped, term) {
-        grouped.mapValues { (_, icons) -> if (term.isEmpty()) icons else icons.filter { it.replace('_', ' ').contains(term, true) } }
+    val searchNames = remember(names, matchedName) {
+        (names + listOfNotNull(matchedName)).associateWith { SearchNames(it.replace('_', ' ')) }
+    }
+    val searchQuery = remember(term) { SearchQuery(term, fuzzy = false) }
+    val matchedIcon = matchedName?.takeIf { searchNames.getValue(it).matches(searchQuery) }
+    val sections = remember(grouped, searchNames, searchQuery) {
+        grouped.mapValues { (_, icons) -> icons.filter { searchNames.getValue(it).matches(searchQuery) } }
             .filterValues { it.isNotEmpty() }
     }
     val letters = remember(sections) { sections.keys.toList() }

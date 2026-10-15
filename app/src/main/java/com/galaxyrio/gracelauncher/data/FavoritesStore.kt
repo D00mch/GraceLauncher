@@ -26,7 +26,7 @@ class FavoritesStore internal constructor(private val preferences: SharedPrefere
         }
 
         val initial = apps.sortedWith(
-            compareBy<LauncherApp> { preferredRank(it) }.thenBy { it.label.lowercase() },
+            compareBy<LauncherApp> { preferredRank(it) }.then(LauncherAppOrder),
         ).take(DEFAULT_FAVORITE_COUNT).map(LauncherApp::key)
         save(initial)
         return initial

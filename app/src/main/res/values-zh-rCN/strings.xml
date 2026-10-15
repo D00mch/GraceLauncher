@@ -563,7 +563,7 @@
     <string name="search_unnamed_contact">未命名联系人</string>
     <string name="search_files">文件搜索</string>
     <string name="search_fuzzy">模糊搜索</string>
-    <string name="search_fuzzy_summary">支持拼写变体、拼音和首字母缩写</string>
+    <string name="search_fuzzy_summary">支持首字母缩写和不连续字母匹配</string>
     <string name="search_internet_setting">网络搜索</string>
     <string name="search_engine">搜索引擎</string>
     <string name="search_engine_google">谷歌</string>

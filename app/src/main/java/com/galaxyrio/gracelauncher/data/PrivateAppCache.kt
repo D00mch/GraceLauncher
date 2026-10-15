@@ -41,6 +41,7 @@ class PrivateAppCache(context: Context) {
                         isSystemApp = entry.optBoolean("system"), isAdaptiveIcon = entry.optBoolean("adaptive"),
                         originalIconColor = if (entry.has("originalColor")) entry.getInt("originalColor") else null,
                         firstInstallTime = entry.optLong("installedAt"),
+                        englishLabel = entry.optString("englishLabel").takeIf(String::isNotBlank),
                         user = user, userSerial = serial, isPrivateSpace = true,
                         profileIconSource = ProfileIconSource.fromCache(icon, monochrome))
                 }
@@ -55,7 +56,7 @@ class PrivateAppCache(context: Context) {
                 entries.put(JSONObject().put("component", app.componentName.flattenToString()).put("label", app.originalLabel)
                     .put("icon", encodeIcon(app.icon)).put("monochrome", encodeIcon(app.monochromeIcon))
                     .put("scale", app.monochromeScale).put("system", app.isSystemApp).put("adaptive", app.isAdaptiveIcon)
-                    .put("installedAt", app.firstInstallTime).apply { app.originalIconColor?.let { put("originalColor", it) } })
+                    .put("englishLabel", app.englishLabel).put("installedAt", app.firstInstallTime).apply { app.originalIconColor?.let { put("originalColor", it) } })
             }
             val bytes = JSONObject().put("serial", serial).put("apps", entries).toString().toByteArray(Charsets.UTF_8)
             val stream = file.startWrite()

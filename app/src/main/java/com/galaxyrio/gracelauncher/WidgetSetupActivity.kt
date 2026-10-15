@@ -98,7 +98,6 @@ class WidgetSetupActivity : ComponentActivity() {
                         }.flatMap { profile ->
                             runCatching { manager.getInstalledProvidersForProfile(profile) }.getOrDefault(emptyList())
                         }.distinctBy { it.provider.flattenToString() to it.profile }
-                            .sortedBy { runCatching { it.loadLabel(packageManager) }.getOrDefault(it.provider.className).lowercase() }
                     }
                     busy = false
                 }

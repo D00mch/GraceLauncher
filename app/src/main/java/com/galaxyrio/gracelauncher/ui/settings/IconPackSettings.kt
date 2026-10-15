@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.icons.IconPackInfo
+import com.galaxyrio.gracelauncher.data.SearchNames
+import com.galaxyrio.gracelauncher.data.SearchQuery
 import com.galaxyrio.gracelauncher.ui.LauncherActions
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
@@ -50,8 +52,12 @@ internal fun IconPackSettings(uiState: LauncherUiState, actions: LauncherActions
     val list = rememberLazyListState()
     val query = rememberTextFieldState()
     val search = query.text.toString().trim()
-    val filtered = remember(uiState.iconPacks, search) {
-        uiState.iconPacks.filter { search.isEmpty() || it.label.contains(search, true) || it.packageName.contains(search, true) }
+    val names = remember(uiState.iconPacks) {
+        uiState.iconPacks.associate { it.packageName to SearchNames(it.label, it.englishLabel) }
+    }
+    val filtered = remember(uiState.iconPacks, names, search) {
+        val query = SearchQuery(search, fuzzy = false)
+        uiState.iconPacks.filter { names.getValue(it.packageName).matches(query) || it.packageName.contains(query.literal, true) }
     }
     val currentActions by rememberUpdatedState(actions)
     val haptics by rememberUpdatedState(LocalHapticFeedback.current)

@@ -20,7 +20,8 @@ import android.util.Xml
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.createBitmap
-import java.text.Collator
+import com.galaxyrio.gracelauncher.data.EnglishLabelReader
+import com.galaxyrio.gracelauncher.data.LauncherLabelOrder
 import java.time.LocalDate
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import org.xmlpull.v1.XmlPullParser
@@ -32,7 +33,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-data class IconPackInfo(val packageName: String, val label: String, val icon: ImageBitmap?)
+data class IconPackInfo(val packageName: String, val label: String, val icon: ImageBitmap?, val englishLabel: String? = null)
 enum class IconPackStatus { System, Ready, Unavailable }
 
 class IconPackRepository(private val context: Context) {
@@ -85,14 +86,14 @@ class IconPackRepository(private val context: Context) {
                 result.activityInfo?.applicationInfo?.takeIf { it.enabled }?.packageName?.let(packages::add)
             }
         }
-        val collator = Collator.getInstance()
+        val englishLabels = EnglishLabelReader(context)
         packages.mapNotNull { pkg ->
             safely {
                 val app = pm.getApplicationInfo(pkg, 0)
                 IconPackInfo(pkg, pm.getApplicationLabel(app).toString(),
-                    safely { renderIcon(pm.getApplicationIcon(app)).asImageBitmap() })
+                    safely { renderIcon(pm.getApplicationIcon(app)).asImageBitmap() }, englishLabel = englishLabels.label(app))
             }
-        }.sortedWith { left, right -> collator.compare(left.label, right.label) }
+        }.sortedWith(compareBy(LauncherLabelOrder) { it.label })
     }
 
     internal suspend fun load(packageName: String?): LoadedIconPack? = withContext(Dispatchers.IO) {

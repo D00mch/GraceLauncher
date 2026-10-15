@@ -579,7 +579,7 @@
     <string name="search_unnamed_contact">Unnamed contact</string>
     <string name="search_files">File search</string>
     <string name="search_fuzzy">Fuzzy search</string>
-    <string name="search_fuzzy_summary">Match spelling variations and initials</string>
+    <string name="search_fuzzy_summary">Match initials and nonconsecutive letters</string>
     <string name="search_internet_setting">Internet search</string>
     <string name="search_engine">Search engine</string>
     <string name="search_engine_google">Google</string>

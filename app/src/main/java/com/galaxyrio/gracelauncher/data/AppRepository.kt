@@ -65,6 +65,7 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
             packageManager.queryIntentActivities(launcherIntent, 0)
         }
 
+        val englishLabels = EnglishLabelReader(context)
         val installTimes = mutableMapOf<String, Long>()
         resolved.asSequence()
             .mapNotNull { resolveInfo ->
@@ -90,7 +91,7 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
                     }.getOrDefault(0L)
                 }
                 makeApp(component, label, drawable, packs, activityInfo.applicationInfo.flags)
-                    .copy(firstInstallTime = installedAt, isLauncherSettings = activityInfo.packageName == context.packageName)
+                    .copy(firstInstallTime = installedAt, isLauncherSettings = activityInfo.packageName == context.packageName, englishLabel = englishLabels.label(resolveInfo))
             }
             .distinctBy(LauncherApp::key)
             .sortedWith(LauncherAppOrder)
@@ -121,6 +122,7 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
         val coroutine = currentCoroutineContext()
         val configuration = Configuration(context.resources.configuration)
         val day = LocalDate.now()
+        val englishLabels = EnglishLabelReader(context)
         val apps = context.getSystemService(LauncherApps::class.java).getActivityList(null, user).map { activity ->
             coroutine.ensureActive()
             val component = activity.componentName
@@ -135,7 +137,7 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
                 val source = runCatching { drawable?.let(ProfileIconSource::fromDrawable) }.getOrNull()
                 makeApp(component, label, drawable, emptyList(), info.flags)
                     .let { app -> app.copy(user = user, userSerial = serial, isPrivateSpace = !work, isWorkProfile = work,
-                        firstInstallTime = activity.firstInstallTime, profileIconSource = source,
+                        firstInstallTime = activity.firstInstallTime, profileIconSource = source, englishLabel = englishLabels.label(activity),
                         // Share the bounded source bitmap instead of retaining a second raw copy.
                         icon = source?.layers()?.original?.asImageBitmap() ?: app.icon) }
                     .also { app ->

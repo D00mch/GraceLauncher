@@ -111,8 +111,7 @@ internal fun AppSearchScreen(
         uiState.allApps.filter { it.folderId == null && (settings.hiddenApps || it.key !in uiState.effectiveHiddenAppKeys) }
     }
     val names = remember(apps) { apps.associate {
-        val label = SearchName(it.label)
-        it.key to (label to if (it.originalLabel == it.label) label else SearchName(it.originalLabel))
+        it.key to it.searchNames()
     } }
     val results: List<SearchResult> = remember(apps, names, contacts, query, settings, hasContactsAccess) {
         if (query.isEmpty()) {
@@ -123,8 +122,7 @@ internal fun AppSearchScreen(
         } else {
             val term = SearchQuery(query, settings.fuzzy)
             val matchedApps = apps.mapNotNull { app ->
-                val (label, original) = names.getValue(app.key)
-                val score = listOfNotNull(label.score(term), original.score(term)).minOrNull() ?: return@mapNotNull null
+                val score = names.getValue(app.key).score(term) ?: return@mapNotNull null
                 score to app
             }.sortedWith(compareBy<Pair<Int, LauncherApp>> { it.first }.thenComparator { a, b -> LauncherAppOrder.compare(a.second, b.second) })
             val matchedContacts = if (settings.contacts && hasContactsAccess) contacts.mapNotNull { contact ->

@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import com.galaxyrio.gracelauncher.R
+import com.galaxyrio.gracelauncher.data.LauncherLabelOrder
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.AppIcon
 import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
@@ -31,7 +32,7 @@ internal fun IconDesignerData(uiState: LauncherUiState, selectedKeys: Set<String
     onSelection: (Set<String>) -> Unit, onEdit: (String) -> Unit, modifier: Modifier = Modifier) {
     val entries = remember(uiState.itemIcons, uiState.allApps, uiState.shortcutApps, uiState.folders, uiState.settings.privateSpace.exposesApps) {
         uiState.itemIcons.keys.filterNot { it.startsWith("profile:") && !uiState.settings.privateSpace.exposesApps && uiState.findItem(it)?.isWorkProfile != true }
-            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { uiState.findItem(it)?.label ?: it })
+            .sortedWith(compareBy(LauncherLabelOrder) { uiState.findItem(it)?.label ?: it })
     }
     val selecting = selectedKeys.isNotEmpty()
     if (entries.isEmpty()) Box(modifier.fillMaxSize().padding(bottom = 88.dp + LocalSettingsBottomInset.current), contentAlignment = Alignment.Center) {

@@ -25,7 +25,8 @@ import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.ui.settings.LocalSettingsBottomInset
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.LauncherAppOrder
-import com.galaxyrio.gracelauncher.data.appSortKey
+import com.galaxyrio.gracelauncher.data.AppSearchIndex
+import com.galaxyrio.gracelauncher.data.SearchQuery
 
 /** One scrolling surface: optional editor content, search, then the app-only fast-scroll range. */
 @Composable
@@ -51,10 +52,10 @@ internal fun AppSelectionList(
     beforeApps: LazyListScope.() -> Unit = {},
 ) {
     val term = query.text.toString().trim()
-    val filtered = remember(apps, term) {
-        val sortTerm = appSortKey(term)
-        apps.filter { term.isEmpty() || it.label.contains(term, true) || it.originalLabel.contains(term, true) ||
-            it.packageName.contains(term, true) || it.sortKey.contains(sortTerm, true) }.sortedWith(LauncherAppOrder)
+    val names = remember(apps) { apps.associate { it.key to AppSearchIndex(it) } }
+    val filtered = remember(apps, names, term) {
+        val query = SearchQuery(term, fuzzy = false)
+        apps.filter { names.getValue(it.key).matches(query) }.sortedWith(LauncherAppOrder)
     }
     Box(modifier.fillMaxSize()) {
         LazyColumn(

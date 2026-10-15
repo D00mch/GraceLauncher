@@ -166,7 +166,9 @@ internal fun FontSettings(uiState: LauncherUiState, actions: LauncherActions, on
             }
         }) { Text(stringResource(R.string.font_delete)) } },
         dismissButton = { TextButton(enabled = !busy, onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } })
-    val filtered = reorder.keys.filter { labels[it].orEmpty().contains(query.text.toString().trim(), ignoreCase = true) }
+    val names = remember(labels) { labels.mapValues { SearchNames(it.value) } }
+    val searchQuery = SearchQuery(query.text.toString(), fuzzy = false)
+    val filtered = reorder.keys.filter { names[it]?.matches(searchQuery) == true }
     SettingsScaffold(stringResource(R.string.settings_font), "font_manager", { if (deleting) cancelDeletion() else onBack() },
         fixedCollapsed = true, actions = {
             if (deleting) {

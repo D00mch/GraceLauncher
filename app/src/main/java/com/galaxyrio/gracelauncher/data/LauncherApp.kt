@@ -43,6 +43,8 @@ data class LauncherApp(
     val isAppStack: Boolean = false,
     /** Original profile artwork survives pack/design changes and temporary quiet mode. */
     val profileIconSource: com.galaxyrio.gracelauncher.data.icons.ProfileIconSource? = null,
+    /** Provider-supplied English label; never replaces the displayed name. */
+    val englishLabel: String? = null,
 ) {
     val key: String = folderId?.let { "folder:$it" } ?: shortcut?.key
         ?: userSerial?.let { "profile:$it:${componentName.flattenToString()}" } ?: componentName.flattenToString()
@@ -62,7 +64,7 @@ private val sortKeys = object : LinkedHashMap<String, String>(64, 0.75f, true) {
 /** One cached key drives both the A–Z section and the order within it. */
 @Synchronized
 fun appSortKey(label: String): String = sortKeys.getOrPut(label) {
-    val normalized = Normalizer.normalize(label.trim(), Normalizer.Form.NFKC)
+    val normalized = romanizeRussianLabel(Normalizer.normalize(label.trim(), Normalizer.Form.NFKC))
     val romanized = when {
         normalized.all { it.code < 128 } -> normalized
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> RomanizedLabels.transform(normalized)
@@ -104,3 +106,7 @@ private fun sectionForSortKey(key: String): String {
 /** Stable across refreshes and renames, regardless of the device UI language. */
 val LauncherAppOrder: Comparator<LauncherApp> = compareBy<LauncherApp> { it.section == "#" }
     .thenBy { it.section }.thenBy { it.sortKey }.thenBy { it.label }.thenBy { it.key }
+
+/** The same alphabetical policy for named entries that are not LauncherApps. */
+internal val LauncherLabelOrder: Comparator<String> = compareBy<String> { sectionForLabel(it) == "#" }
+    .thenBy { sectionForLabel(it) }.thenBy { appSortKey(it) }.thenBy { it }

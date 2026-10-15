@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.dp
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.ui.settings.LocalSettingsBottomInset
 import com.galaxyrio.gracelauncher.data.LauncherApp
+import com.galaxyrio.gracelauncher.data.AppSearchIndex
+import com.galaxyrio.gracelauncher.data.LauncherAppOrder
+import com.galaxyrio.gracelauncher.data.SearchQuery
 import com.galaxyrio.gracelauncher.data.ShortcutStatus
 import com.galaxyrio.gracelauncher.ui.LauncherActions
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
@@ -57,8 +60,21 @@ internal fun ShortcutPickerScreen(uiState: LauncherUiState, actions: LauncherAct
         }
     }
     val term = query.text.toString().trim()
-    val visible = groups.orEmpty().filter { group -> group.shortcuts.isNotEmpty() &&
-        (term.isEmpty() || group.app.label.contains(term, true) || group.app.packageName.contains(term, true) || group.shortcuts.any { it.label.contains(term, true) }) }
+    val currentGroups = remember(groups, apps, uiState.shortcutApps) {
+        val owners = apps.associateBy(LauncherApp::key)
+        groups.orEmpty().map { group ->
+            group.copy(app = owners[group.app.key] ?: group.app,
+                shortcuts = group.shortcuts.map { uiState.findItem(it.key) ?: it })
+        }.sortedWith(compareBy(LauncherAppOrder) { it.app })
+    }
+    val names = remember(currentGroups) {
+        currentGroups.flatMap { listOf(it.app) + it.shortcuts }.associate { it.key to AppSearchIndex(it) }
+    }
+    val visible = remember(currentGroups, names, term) {
+        val query = SearchQuery(term, fuzzy = false)
+        currentGroups.filter { group -> group.shortcuts.isNotEmpty() &&
+            (names.getValue(group.app.key).matches(query) || group.shortcuts.any { names.getValue(it.key).matches(query) }) }
+    }
     val loading = groups == null || uiState.isLoadingApps
     val loadFailed = uiState.appLoadFailed || groups.orEmpty().any { it.status != ShortcutStatus.Ready }
     SettingsScaffold(stringResource(R.string.shortcuts_title), "shortcut_picker", onBack) { padding ->

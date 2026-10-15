@@ -41,16 +41,23 @@ import com.galaxyrio.gracelauncher.ui.components.LauncherSearchBar
 import com.galaxyrio.gracelauncher.ui.settings.SettingsScaffold
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.text.Collator
+import android.os.Build
+import com.galaxyrio.gracelauncher.data.EnglishLabelReader
+import com.galaxyrio.gracelauncher.data.LauncherLabelOrder
+import com.galaxyrio.gracelauncher.data.SearchNames
+import com.galaxyrio.gracelauncher.data.SearchQuery
 
-private data class WidgetEntry(val info: AppWidgetProviderInfo, val label: String) {
+private data class WidgetEntry(val info: AppWidgetProviderInfo, val label: String, val englishLabel: String?) {
+    val searchNames = SearchNames(label, englishLabel)
     val key get() = info.provider.flattenToString() + ":" + info.profile
 }
 
 private data class WidgetAppGroup(
     val key: String, val packageName: String, val label: String,
-    val app: LauncherApp, val widgets: List<WidgetEntry>,
-)
+    val app: LauncherApp, val widgets: List<WidgetEntry>, val englishLabel: String?,
+) {
+    val searchNames = SearchNames(label, englishLabel, app.label, app.originalLabel, app.englishLabel)
+}
 
 @Composable
 internal fun WidgetPicker(providers: List<AppWidgetProviderInfo>?, busy: Boolean, uiState: LauncherUiState, onBack: () -> Unit, onSelect: (AppWidgetProviderInfo) -> Unit) {
@@ -63,10 +70,10 @@ internal fun WidgetPicker(providers: List<AppWidgetProviderInfo>?, busy: Boolean
         value = providers?.let { withContext(Dispatchers.IO) { loadWidgetGroups(context, it, uiState) } }
     }
     val filtered = remember(groups, query) {
-        val term = query.trim()
+        val term = SearchQuery(query, fuzzy = false)
         groups.orEmpty().mapNotNull { app ->
-            if (term.isEmpty() || app.label.contains(term, true) || app.packageName.contains(term, true)) app
-            else app.widgets.filter { it.label.contains(term, true) }.takeIf { it.isNotEmpty() }?.let { app.copy(widgets = it) }
+            if (app.searchNames.matches(term) || app.packageName.contains(term.literal, true)) app
+            else app.widgets.filter { it.searchNames.matches(term) }.takeIf { it.isNotEmpty() }?.let { app.copy(widgets = it) }
         }
     }
     val toggle: (String) -> Unit = { key -> expandedApps = if (key in expandedApps) expandedApps - key else expandedApps + key }
@@ -135,7 +142,7 @@ private suspend fun loadWidgetGroups(context: Context, providers: List<AppWidget
     val pm = context.packageManager
     val launcherApps = context.getSystemService(LauncherApps::class.java)
     val iconSize = (48 * context.resources.displayMetrics.density).toInt().coerceIn(48, 192)
-    val collator = Collator.getInstance(context.resources.configuration.locales[0])
+    val englishLabels = EnglishLabelReader(context)
     val repository = AppRepository(context, IconPackRepository(context))
     return providers.groupBy { it.provider.packageName to it.profile }.map { (identity, widgets) ->
         val (packageName, profile) = identity
@@ -146,12 +153,17 @@ private suspend fun loadWidgetGroups(context: Context, providers: List<AppWidget
             val drawable = appInfo?.loadIcon(pm) ?: widgets.first().loadIcon(context, context.resources.displayMetrics.densityDpi)
             pm.getUserBadgedIcon(drawable, profile).toBitmap(iconSize, iconSize).asImageBitmap()
         }.getOrNull()
-        val entries = widgets.map { WidgetEntry(it, runCatching { it.loadLabel(pm) }.getOrDefault(label)) }
-            .sortedWith { a, b -> collator.compare(a.label, b.label) }
+        val entries = widgets.map { info ->
+            val englishLabel = if (Build.VERSION.SDK_INT >= 31) englishLabels.label(info.activityInfo) else {
+                runCatching { pm.getReceiverInfo(info.provider, 0) }.getOrNull()
+                    ?.takeIf { it.applicationInfo.uid == appInfo?.uid }?.let(englishLabels::label)
+            }
+            WidgetEntry(info, runCatching { info.loadLabel(pm) }.getOrDefault(label), englishLabel)
+        }.sortedWith(compareBy(LauncherLabelOrder) { it.label })
         val app = uiState.allApps.firstOrNull {
             it.shortcut == null && it.packageName == packageName && (it.user ?: android.os.Process.myUserHandle()) == profile
         } ?: repository.applyPrivateIconPacks(listOf(LauncherApp(widgets.first().provider, badgedLabel, icon)),
             uiState.settings.enabledIconPackPackages).single()
-        WidgetAppGroup("$packageName:$profile", packageName, badgedLabel, app, entries)
-    }.sortedWith { a, b -> collator.compare(a.label, b.label) }
+        WidgetAppGroup("$packageName:$profile", packageName, badgedLabel, app, entries, appInfo?.let(englishLabels::label))
+    }.sortedWith(compareBy(LauncherLabelOrder) { it.label })
 }

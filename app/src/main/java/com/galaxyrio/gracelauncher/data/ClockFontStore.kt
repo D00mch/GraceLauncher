@@ -30,7 +30,7 @@ class ClockFontStore(context: Context) {
     suspend fun list(): List<ClockFontFile> = withContext(Dispatchers.IO) {
         directory.listFiles().orEmpty().filter { it.isFile && validId(it.name) }
             .map { ClockFontFile(it.name, it.name.substringAfter('_').substringBeforeLast('.')) }
-            .sortedBy { it.name.lowercase() }
+            .sortedWith(compareBy(LauncherLabelOrder) { it.name })
     }
 
     suspend fun import(uri: Uri, requireClockDigits: Boolean = true): ClockFontFile = withContext(Dispatchers.IO) {
