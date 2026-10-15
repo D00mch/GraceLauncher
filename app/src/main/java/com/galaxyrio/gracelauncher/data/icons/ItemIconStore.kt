@@ -17,8 +17,10 @@ import android.util.LruCache
 import android.util.Log
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.IconDesign
+import com.galaxyrio.gracelauncher.data.IconDisplaySettings
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
 import com.galaxyrio.gracelauncher.data.LauncherSettings
@@ -39,10 +41,16 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
     private val images = LruCache<String, Bitmap>(12)
     private val themePalettes = LruCache<Triple<Int, Boolean, PaletteStyle>, Pair<Int, Int>>(8)
     private val appPalettes = LruCache<Triple<Int, Boolean, PaletteStyle>, Pair<Int, Int>>(256)
-    private data class ProfileRenderSignature(val source: Any?, val choice: ItemIcon,
-        val packs: List<LoadedIconPack?>, val theme: Pair<Int, Int>, val dynamic: Pair<Int, Int>,
+    private data class RenderSignature(val source: Any?, val choice: ItemIcon,
+        val packs: List<Any?>, val theme: Pair<Int, Int>, val dynamic: Pair<Int, Int>,
         val fromApp: Pair<Int, Int>?, val configuration: Configuration, val day: LocalDate)
-    private val profileRenders = IconSnapshotCache<ProfileRenderSignature, LauncherApp>()
+    private data class RenderedIcon(val icon: ImageBitmap?, val monochrome: ImageBitmap?, val scale: Float,
+        val packageName: String?, val display: IconDisplaySettings?)
+    private val renderedIcons = IconSnapshotCache<RenderSignature, RenderedIcon>(maxBytes = 16 * 1024 * 1024,
+        sizeOf = { iconBitmapBytes(it.icon, it.monochrome) })
+    private data class LayersSignature(val source: Any, val configuration: Configuration, val day: LocalDate)
+    private val originalLayers = IconSnapshotCache<LayersSignature, IconLayers>(maxBytes = 16 * 1024 * 1024,
+        sizeOf = { it.cacheBytes })
 
     private fun imageBitmap(name: String, size: Int): Bitmap? = runCatching {
         val key = "$name:$size"
@@ -136,8 +144,18 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
                     source.layers()?.let { return@withContext it }
                 }
             }
-            val drawable = if (app.shortcut == null && choice.kind in setOf("theme", "system", "pack")) systemDrawable(app) else null
-            if (drawable != null) return@withContext iconLayers(drawable, size)
+            if (app.shortcut == null && choice.kind in setOf("theme", "system", "pack")) {
+                // Personal artwork is retained only in this bounded cache. High-resolution
+                // editor previews read their own layers instead of growing the launcher cache.
+                val signature = app.iconSourceRevision?.takeIf { size == 144 }?.let {
+                    LayersSignature(it, Configuration(context.resources.configuration), LocalDate.now())
+                }
+                if (signature != null) originalLayers.get(app.key, signature)?.let { return@withContext it }
+                val drawable = systemDrawable(app)
+                if (drawable != null) return@withContext iconLayers(drawable, size).also {
+                    if (signature != null) originalLayers.put(app.key, signature, it)
+                }
+            }
             val bitmap = if (choice.kind == "image") imageBitmap(choice.source, size) else null
             (bitmap ?: (app.shortcut?.icon ?: app.icon)?.asAndroidBitmap())?.let {
                 IconLayers(it, monochrome = if (bitmap == null) app.monochromeIcon?.asAndroidBitmap() else null)
@@ -201,28 +219,29 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
         val choice = (special ?: ItemIcon.Theme).let {
             it.copy(design = (it.design?.withThemeDefaults(shared) ?: shared).copy(iconSize = shared.iconSize))
         }
-        if (app.userSerial == null) return apply(app, choice, settings)
         return withContext(Dispatchers.IO) {
             // Only visual inputs belong in this key. Opening a folder, ordering apps,
-            // changing badges or other settings must not redraw the whole profile.
+            // changing badges or other settings must not redraw the whole catalog.
             val selectedPacks = when (choice.kind) {
                 "theme" -> settings.enabledIconPackPackages
                 "pack" -> listOf(choice.source)
                 else -> emptyList()
             }
-            val signature = ProfileRenderSignature(app.profileIconSource ?: app.icon, choice,
-                selectedPacks.map { packs.load(it) }, themeColors(settings), dynamicColors(settings),
+            val signature = RenderSignature(app.iconSourceRevision ?: app.profileIconSource?.cacheKey ?: app.icon, choice,
+                selectedPacks.map { packs.load(it)?.cacheKey }, themeColors(settings), dynamicColors(settings),
                 if (choice.design?.background?.fromApp == true || choice.design?.foreground?.fromApp == true)
                     appColors(app.originalIconColor, settings) else null,
                 Configuration(context.resources.configuration), LocalDate.now())
-            val rendered = profileRenders.get(app.key, signature) ?: apply(app, choice, settings).also {
+            val rendered = renderedIcons.get(app.key, signature) ?: apply(app, choice, settings).let {
+                val pixels = RenderedIcon(it.icon, it.monochromeIcon, it.monochromeScale, it.iconPackPackage, it.iconDisplay)
                 // Rendering failures fall back to app.icon; don't memoize that failure.
-                if (it.icon != null && it.icon !== app.icon) profileRenders.put(app.key, signature, it)
+                if (it.icon != null && it.icon !== app.icon) renderedIcons.put(app.key, signature, pixels)
+                pixels
             }
             // Never reuse labels, shortcuts, badges or profile state from the cache.
-            app.copy(icon = rendered.icon, monochromeIcon = rendered.monochromeIcon,
-                monochromeScale = rendered.monochromeScale, iconPackPackage = rendered.iconPackPackage,
-                iconDisplay = rendered.iconDisplay)
+            app.copy(icon = rendered.icon, monochromeIcon = rendered.monochrome,
+                monochromeScale = rendered.scale, iconPackPackage = rendered.packageName,
+                iconDisplay = rendered.display)
         }
     }
 

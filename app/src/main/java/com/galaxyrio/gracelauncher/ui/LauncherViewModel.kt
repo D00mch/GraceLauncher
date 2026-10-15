@@ -310,6 +310,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == Intent.ACTION_PACKAGE_REMOVED && intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return
+            intent?.data?.schemeSpecificPart?.let { appRepository.invalidateProfileApps(Process.myUserHandle(), listOf(it)) }
             refreshApps()
         }
     }
@@ -476,7 +477,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         appLoadJob = viewModelScope.launch {
             // Resumes share this job. A change during IO queues one pass for the latest inputs.
             while (true) {
-                val request = catalogRefresh.pending(catalogInputs()) ?: break
+                val request = catalogRefresh.start(catalogInputs()) ?: break
                 val iconSettings = _uiState.value.settings
                 val snapshot = itemsSnapshot
                 refreshPrivateApps()

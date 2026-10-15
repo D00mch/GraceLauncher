@@ -45,4 +45,15 @@ class CatalogRefreshStateTest {
         // A failed load never calls complete; the next resume must retry it.
         assertEquals(retry, state.pending("new theme"))
     }
+
+    @Test fun revertingInputsDuringAReloadStillRequiresTheLatestLoadToFinish() {
+        val state = CatalogRefreshState<String>()
+        state.complete(state.start("original")!!, "original")
+        val changed = state.start("changed")!!
+        assertFalse(state.complete(changed, "original"))
+        // Otherwise the worker can exit while its loading indicator is still set.
+        val restored = state.start("original")!!
+        assertTrue(state.complete(restored, "original"))
+        assertNull(state.pending("original"))
+    }
 }

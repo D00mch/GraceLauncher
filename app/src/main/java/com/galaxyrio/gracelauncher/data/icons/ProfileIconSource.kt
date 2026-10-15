@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.asAndroidBitmap
  * identifies an unchanged source across inventory refreshes.
  */
 class ProfileIconSource private constructor(private val source: IconLayers?) {
+    // Render-cache signatures must not keep a second strong reference to the source bitmaps.
+    internal val cacheKey = Any()
     internal fun layers(): IconLayers? = source
 
     companion object {

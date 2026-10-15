@@ -155,6 +155,7 @@ internal class LoadedIconPack(
     internal val definition: IconPackDefinition,
     private val themed: Boolean,
 ) {
+    internal val cacheKey = Any()
     private val bitmaps = LruCache<String, Bitmap>(96)
 
     @Synchronized

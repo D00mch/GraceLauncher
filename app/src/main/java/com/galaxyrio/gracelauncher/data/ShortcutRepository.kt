@@ -30,6 +30,7 @@ data class LauncherShortcut(
     val userSerial: Long? = null,
     val isPrivateSpace: Boolean = false,
 ) {
+    private val iconCacheKey = Any()
     val key: String get() = (userSerial?.let { "profile:$it:" } ?: "") + "shortcut:$packageName/${Uri.encode(id)}"
     fun asApp(owner: LauncherApp): LauncherApp {
         val identity = copy(user = user ?: owner.user, userSerial = userSerial ?: owner.userSerial,
@@ -38,7 +39,7 @@ data class LauncherShortcut(
             user = identity.user, userSerial = identity.userSerial, isPrivateSpace = identity.isPrivateSpace,
             showPrivateIndicator = owner.showPrivateIndicator,
             isWorkProfile = owner.isWorkProfile, showWorkIndicator = owner.showWorkIndicator,
-            originalIconColor = owner.originalIconColor)
+            originalIconColor = owner.originalIconColor, iconSourceRevision = iconCacheKey)
     }
 }
 

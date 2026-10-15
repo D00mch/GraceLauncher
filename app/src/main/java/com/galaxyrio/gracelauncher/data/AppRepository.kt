@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.LauncherApps
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
 import android.content.res.Configuration
 import android.graphics.Rect
 import android.os.Build
@@ -23,6 +24,8 @@ import com.galaxyrio.gracelauncher.data.icons.IconDominantColor
 import com.galaxyrio.gracelauncher.data.icons.IconSnapshotCache
 import com.galaxyrio.gracelauncher.data.icons.ProfileIconSource
 import com.galaxyrio.gracelauncher.data.icons.renderIcon
+import com.galaxyrio.gracelauncher.data.icons.PackIcon
+import com.galaxyrio.gracelauncher.data.icons.iconBitmapBytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.currentCoroutineContext
@@ -33,15 +36,22 @@ data class WorkProfile(val user: UserHandle, val serial: Long)
 
 class AppRepository(private val context: Context, private val iconPacks: IconPackRepository = IconPackRepository(context)) {
     private val packageManager = context.packageManager
+    private data class PersonalSourceSignature(val configuration: Configuration, val day: LocalDate,
+        val label: String, val installedAt: Long, val updatedAt: Long, val version: Long,
+        val apkPaths: List<String>, val flags: Int, val iconResource: Int, val revision: Long)
+    private val personalSources = IconSnapshotCache<PersonalSourceSignature, LauncherApp>(
+        maxBytes = 32 * 1024 * 1024, sizeOf = { iconBitmapBytes(it.icon, it.monochromeIcon) })
     private data class ProfileSourceSignature(val configuration: Configuration, val day: LocalDate,
         val label: String, val installedAt: Long, val apkPaths: List<String>, val flags: Int, val revision: Long)
     private val profileSources = IconSnapshotCache<ProfileSourceSignature, LauncherApp>()
-    private data class ProfilePackSignature(val source: Any?,
-        val packs: List<com.galaxyrio.gracelauncher.data.icons.LoadedIconPack>, val day: LocalDate)
-    private val profilePacks = IconSnapshotCache<ProfilePackSignature, LauncherApp>()
+    private data class PackSignature(val source: Any?,
+        val packs: List<Any>, val day: LocalDate)
+    private data class PackedIcon(val packageName: String?, val icon: PackIcon?)
+    private val packedIcons = IconSnapshotCache<PackSignature, PackedIcon>(maxBytes = 8 * 1024 * 1024,
+        sizeOf = { iconBitmapBytes(it.icon?.bitmap, it.icon?.monochrome) })
     private val profileRevisions = mutableMapOf<Pair<UserHandle, String>, Long>()
 
-    /** Package changes invalidate only that installation, not every icon on unlock. */
+    /** Package changes invalidate only that installation's artwork, including the personal profile. */
     fun invalidateProfileApps(user: UserHandle, packages: Collection<String>) = synchronized(profileRevisions) {
         packages.forEach { name ->
             val key = user to name
@@ -52,8 +62,9 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
     suspend fun loadApps(iconPackPackage: String?): List<LauncherApp> = loadApps(listOfNotNull(iconPackPackage))
 
     suspend fun loadApps(iconPackPackages: List<String> = emptyList()): List<LauncherApp> = withContext(Dispatchers.IO) {
-        val packs = normalizeIconPackOrder(iconPackPackages).mapNotNull { iconPacks.load(it) }
         val coroutine = currentCoroutineContext()
+        val configuration = Configuration(context.resources.configuration)
+        val day = LocalDate.now()
         val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager.queryIntentActivities(
@@ -66,8 +77,8 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
         }
 
         val englishLabels = EnglishLabelReader(context)
-        val installTimes = mutableMapOf<String, Long>()
-        resolved.asSequence()
+        val packages = mutableMapOf<String, PackageInfo?>()
+        val apps = resolved.asSequence()
             .mapNotNull { resolveInfo ->
                 coroutine.ensureActive()
                 val activityInfo = resolveInfo.activityInfo ?: return@mapNotNull null
@@ -79,23 +90,37 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
                     .toString()
                     .trim()
                     .ifBlank { activityInfo.name.substringAfterLast('.') }
-                val drawable = runCatching { resolveInfo.loadIcon(packageManager) }.getOrNull()
-                val installedAt = installTimes.getOrPut(activityInfo.packageName) {
+                val packageInfo = packages.getOrPut(activityInfo.packageName) {
                     runCatching {
                         if (Build.VERSION.SDK_INT >= 33) {
-                            packageManager.getPackageInfo(activityInfo.packageName, PackageManager.PackageInfoFlags.of(0L)).firstInstallTime
+                            packageManager.getPackageInfo(activityInfo.packageName, PackageManager.PackageInfoFlags.of(0L))
                         } else {
                             @Suppress("DEPRECATION")
-                            packageManager.getPackageInfo(activityInfo.packageName, 0).firstInstallTime
+                            packageManager.getPackageInfo(activityInfo.packageName, 0)
                         }
-                    }.getOrDefault(0L)
+                    }.getOrNull()
                 }
-                makeApp(component, label, drawable, packs, activityInfo.applicationInfo.flags)
-                    .copy(firstInstallTime = installedAt, isLauncherSettings = activityInfo.packageName == context.packageName, englishLabel = englishLabels.label(resolveInfo))
+                val info = activityInfo.applicationInfo
+                val revision = synchronized(profileRevisions) {
+                    profileRevisions[Process.myUserHandle() to activityInfo.packageName] ?: 0L
+                }
+                val signature = PersonalSourceSignature(configuration, day, label, packageInfo?.firstInstallTime ?: 0,
+                    packageInfo?.lastUpdateTime ?: 0, packageInfo?.longVersionCode ?: 0,
+                    listOfNotNull(info.sourceDir) + info.splitSourceDirs.orEmpty(), info.flags, resolveInfo.iconResource, revision)
+                personalSources.get(component.flattenToString(), signature) ?: run {
+                    val drawable = runCatching { resolveInfo.loadIcon(packageManager) }.getOrNull()
+                    makeApp(component, label, drawable, emptyList(), info.flags).copy(
+                        firstInstallTime = signature.installedAt, isLauncherSettings = activityInfo.packageName == context.packageName,
+                        englishLabel = englishLabels.label(resolveInfo), iconSourceRevision = signature).also { app ->
+                        coroutine.ensureActive()
+                        if (app.icon != null) personalSources.put(app.key, signature, app)
+                    }
+                }
             }
             .distinctBy(LauncherApp::key)
             .sortedWith(LauncherAppOrder)
             .toList()
+        applyPrivateIconPacks(apps, iconPackPackages)
     }
 
     fun workProfiles(): List<WorkProfile> {
@@ -154,15 +179,15 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
         val packs = normalizeIconPackOrder(iconPackPackages).mapNotNull { iconPacks.load(it) }
         if (packs.isEmpty()) return@withContext apps
         apps.map { app ->
-            val signature = ProfilePackSignature(app.profileIconSource ?: app.icon, packs, LocalDate.now())
-            val packed = profilePacks.get(app.key, signature) ?: run {
+            val signature = PackSignature(app.iconSourceRevision ?: app.profileIconSource?.cacheKey ?: app.icon,
+                packs.map { it.cacheKey }, LocalDate.now())
+            val packed = packedIcons.get(app.key, signature) ?: run {
                 val match = firstMatchingPackIcon(packs) { it.iconFor(app.componentName, null) }
-                (if (match == null) app else app.copy(icon = match.second.bitmap, monochromeIcon = match.second.monochrome,
-                    monochromeScale = match.second.monochromeScale, iconPackPackage = match.first.packageName,
-                    themeIconPackPackage = match.first.packageName)).also { profilePacks.put(app.key, signature, it) }
+                PackedIcon(match?.first?.packageName, match?.second).also { packedIcons.put(app.key, signature, it) }
             }
-            app.copy(icon = packed.icon, monochromeIcon = packed.monochromeIcon, monochromeScale = packed.monochromeScale,
-                iconPackPackage = packed.iconPackPackage, themeIconPackPackage = packed.themeIconPackPackage)
+            val icon = packed.icon ?: return@map app
+            app.copy(icon = icon.bitmap, monochromeIcon = icon.monochrome, monochromeScale = icon.monochromeScale,
+                iconPackPackage = packed.packageName, themeIconPackPackage = packed.packageName)
         }
     }
 

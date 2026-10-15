@@ -56,4 +56,29 @@ class IconSnapshotCacheTest {
         assertEquals("a", cache.get("a", 1))
         assertEquals("c", cache.get("c", 1))
     }
+
+    @Test fun bitmapBudgetEvictsTheLeastRecentlyUsedEntryBeforeTheCountLimit() {
+        val cache = IconSnapshotCache<Int, ByteArray>(capacity = 100, maxBytes = 10, sizeOf = { it.size })
+        val first = ByteArray(4)
+        cache.put("a", 1, first)
+        cache.put("b", 1, ByteArray(4))
+        assertSame(first, cache.get("a", 1))
+        cache.put("c", 1, ByteArray(4))
+        assertNull(cache.get("b", 1))
+        assertSame(first, cache.get("a", 1))
+        assertNotNull(cache.get("c", 1))
+    }
+
+    @Test fun replacingAnIconReleasesItsOldBudgetAndOversizedImagesAreNotRetained() {
+        val cache = IconSnapshotCache<Int, ByteArray>(maxBytes = 10, sizeOf = { it.size })
+        cache.put("a", 1, ByteArray(8))
+        cache.put("a", 2, ByteArray(2))
+        cache.put("b", 1, ByteArray(8))
+        assertNotNull(cache.get("a", 2))
+        assertNotNull(cache.get("b", 1))
+        cache.put("huge", 1, ByteArray(11))
+        assertNull(cache.get("huge", 1))
+        assertNotNull(cache.get("a", 2))
+        assertNotNull(cache.get("b", 1))
+    }
 }
