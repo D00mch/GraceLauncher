@@ -239,6 +239,7 @@ fun FolderRow(
     showLabel: Boolean = true,
     app: LauncherApp = folder.asApp(),
     trailing: (@Composable () -> Unit)? = null,
+    notification: AppNotification? = null,
 ) {
     val display = app.effectiveDisplay(LocalLauncherAppearance.current)
     LauncherRow(
@@ -257,6 +258,7 @@ fun FolderRow(
         highlighted = highlighted,
         showLabel = showLabel,
         trailing = trailing,
+        notification = notification,
         animationComponents = folder.appKeys.mapNotNull(android.content.ComponentName::unflattenFromString),
         animationFolder = true,
         hiddenIcon = display.style == IconDisplayStyle.Hidden,
@@ -295,7 +297,6 @@ private fun LauncherRow(
     val appearance = LocalLauncherAppearance.current
     val inputEnabled = LocalLauncherInputEnabled.current
     val list = LocalListAppearance.current
-    val labelStyle = listLabelStyle()
     val openFirstDescription = stringResource(R.string.popup_swipe_left_first)
     val currentPrepare by rememberUpdatedState(onPrepare)
     val currentDrag by rememberUpdatedState(onDrag)
@@ -409,21 +410,8 @@ private fun LauncherRow(
                     .then(if (animationComponents.isNotEmpty())
                         Modifier.launcherAnimationTarget(animationComponents, animationFolder) else Modifier)
                 else Modifier)) {
-                if (labelVisible) Text(
-                    text = label + (notification?.let { " · ${notificationAge(it.postedAt)}" } ?: ""),
-                    modifier = Modifier.testTag("$rowKey:label"),
-                    style = labelStyle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (notification != null) {
-                    if (labelVisible) Spacer(Modifier.height(2.dp))
-                    listOf(notification.title, notification.text.replace('\n', ' ')).filter { it.isNotBlank() }.forEach { line ->
-                        Text(line, color = labelStyle.color.copy(alpha = 0.88f),
-                            style = labelStyle.copy(fontSize = (list.fontSize - 2).sp),
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
+                AppNotificationLabel(label, notification, labelVisible,
+                    labelModifier = Modifier.testTag("$rowKey:label"))
             }
             trailing?.invoke()
             if (notification != null) {
@@ -437,6 +425,35 @@ private fun LauncherRow(
                         Modifier.rotate(if (LocalLayoutDirection.current == LayoutDirection.Ltr) -90f else 90f),
                         tint = appearance.text)
                 }
+            }
+        }
+    }
+}
+
+/** Shared by wallpaper rows and the app rows inside a pop-up/folder. */
+@Composable
+internal fun AppNotificationLabel(
+    label: String,
+    notification: AppNotification?,
+    showLabel: Boolean,
+    modifier: Modifier = Modifier,
+    labelModifier: Modifier = Modifier,
+    onWallpaper: Boolean = true,
+    maxLines: Int = 1,
+) {
+    val style = listLabelStyle(onWallpaper)
+    val list = LocalListAppearance.current
+    Column(modifier) {
+        if (showLabel) Text(
+            text = label + (notification?.let { " · ${notificationAge(it.postedAt)}" } ?: ""),
+            modifier = labelModifier, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
+        )
+        if (notification != null) {
+            if (showLabel) Spacer(Modifier.height(2.dp))
+            listOf(notification.title, notification.text.replace('\n', ' ')).filter { it.isNotBlank() }.forEach { line ->
+                Text(line, color = style.color.copy(alpha = 0.88f),
+                    style = style.copy(fontSize = (list.fontSize - 2).sp),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

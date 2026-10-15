@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
@@ -21,6 +22,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -47,12 +49,12 @@ import com.galaxyrio.gracelauncher.data.notifications.AppNotification
 import com.galaxyrio.gracelauncher.ui.LauncherActions
 import com.galaxyrio.gracelauncher.ui.LauncherUiState
 import com.galaxyrio.gracelauncher.ui.components.AppIcon
+import com.galaxyrio.gracelauncher.ui.components.AppNotificationLabel
 import com.galaxyrio.gracelauncher.ui.widgets.HomeWidget
 import com.galaxyrio.gracelauncher.ui.widgets.rememberHostedWidget
 import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
 import com.galaxyrio.gracelauncher.ui.components.LauncherSymbol
 import com.galaxyrio.gracelauncher.ui.components.LocalListAppearance
-import com.galaxyrio.gracelauncher.ui.components.listLabelStyle
 import com.galaxyrio.gracelauncher.ui.theme.LocalLauncherAppearance
 import com.galaxyrio.gracelauncher.ui.theme.effectiveDisplay
 import kotlin.math.roundToInt
@@ -73,11 +75,12 @@ fun FolderPopup(
     uiState: LauncherUiState = LauncherUiState(apps = apps, folders = listOf(folder)),
     actions: LauncherActions = LauncherActions(), onDetails: (LauncherApp) -> Unit = {},
     showNames: Boolean = true,
+    onOpenAppPopup: ((LauncherApp, Rect) -> Unit)? = null,
 ) = ShortcutPopup(
     app = uiState.folderItem(folder), anchor = anchor, hasAccess = uiState.hasShortcutAccess,
     actions = actions, onLaunchApp = {}, onDismiss = onDismiss, reveal = reveal,
     uiState = uiState, onEdit = onEdit, onDetails = onDetails, onLaunchItem = onLaunchApp,
-    showNames = showNames,
+    showNames = showNames, onOpenAppPopup = onOpenAppPopup,
 )
 
 /** Same-window overlay: adding a popup window during DOWN would cancel the row's drag. */
@@ -95,13 +98,13 @@ fun ShortcutPopup(
     onEdit: (() -> Unit)? = {},
     onDetails: (LauncherApp) -> Unit = {},
     showNames: Boolean = true,
+    onOpenAppPopup: ((LauncherApp, Rect) -> Unit)? = null,
     onLaunchItem: (LauncherApp, Rect) -> Unit = { item, bounds ->
         item.shortcut?.let { actions.launchShortcutAt?.invoke(it, bounds) ?: actions.launchShortcut(it) }
     },
 ) {
     val isFolder = app.folderId != null
     val listAppearance = LocalListAppearance.current
-    val labelStyle = listLabelStyle(onWallpaper = false)
     val isPrivateFolder = app.folderId == PrivateSpaceFolderId
     var retry by remember { mutableIntStateOf(0) }
     val loadShortcuts by rememberUpdatedState(actions.shortcuts)
@@ -199,6 +202,7 @@ fun ShortcutPopup(
                         var iconBounds by remember { mutableStateOf(Rect.Zero) }
                         val itemDisplay = itemApp.effectiveDisplay(LocalLauncherAppearance.current)
                         val hiddenIcon = itemDisplay.style == IconDisplayStyle.Hidden
+                        val notification = uiState.ownNotificationsFor(itemApp, expanded = true).firstOrNull()
                         Row(
                             Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(if (isFolder) "folder_app:${itemApp.key}" else "shortcut:${itemApp.shortcut?.id ?: itemApp.key}")
                                 .semantics { if (!showNames && !hiddenIcon) contentDescription = itemApp.label }
@@ -209,16 +213,25 @@ fun ShortcutPopup(
                                 }).padding(horizontal = 12.dp, vertical = (listAppearance.appSpacing / 2f).dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            if (hiddenIcon) {
-                                Text(itemApp.label, Modifier.onGloballyPositioned { iconBounds = it.boundsInWindow() },
-                                    style = labelStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            } else {
+                            if (!hiddenIcon) {
                                 AppIcon(itemApp, Modifier.onGloballyPositioned { iconBounds = it.boundsInWindow() },
                                     size = 36.dp, display = itemDisplay)
-                                if (showNames) {
+                                if (showNames || notification != null) {
                                     Spacer(Modifier.width(listAppearance.iconNameGap.dp))
-                                    Text(itemApp.label, style = labelStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 }
+                            }
+                            AppNotificationLabel(itemApp.label, notification, showNames || hiddenIcon,
+                                modifier = Modifier.weight(1f).then(if (hiddenIcon)
+                                    Modifier.onGloballyPositioned { iconBounds = it.boundsInWindow() } else Modifier),
+                                onWallpaper = false, maxLines = 2)
+                            if (notification != null && onOpenAppPopup != null) IconButton(
+                                onClick = { onOpenAppPopup(itemApp, iconBounds) },
+                                enabled = !reveal.dragging && reveal.expanded,
+                                modifier = Modifier.size(48.dp).testTag("popup_notification_arrow:${itemApp.key}")
+                                    .semantics { contentDescription = itemApp.label },
+                            ) {
+                                LauncherIcon(LauncherSymbol.Chevron,
+                                    Modifier.rotate(if (LocalLayoutDirection.current == LayoutDirection.Ltr) -90f else 90f))
                             }
                         }
                 }

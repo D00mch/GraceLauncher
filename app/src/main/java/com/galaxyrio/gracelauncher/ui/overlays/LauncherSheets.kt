@@ -191,6 +191,7 @@ internal fun LauncherOverlays(
             showNames = uiState.settings.listAppearance.showNames(favoritesSurface),
             folder = folder, apps = members, anchor = overlay.anchor, reveal = overlay.reveal,
             uiState = uiState, actions = actions,
+            onOpenAppPopup = { app, bounds -> onChange(LauncherOverlay.Shortcuts(app, bounds)) },
             onDetails = { member ->
                 if ((isPrivate || isWork) && member.folderId == folder.id) edit?.invoke()
                 else onChange(LauncherOverlay.AppDetails(member,
@@ -210,8 +211,9 @@ internal fun LauncherOverlays(
         ShortcutPopup(
             app = overlay.app, anchor = overlay.anchor, hasAccess = uiState.hasShortcutAccess, actions = actions,
             reveal = overlay.reveal,
-            notifications = uiState.notificationsFor(overlay.app, expanded = true),
+            notifications = uiState.ownNotificationsFor(overlay.app, expanded = true),
             uiState = uiState,
+            onOpenAppPopup = { app, bounds -> onChange(LauncherOverlay.Shortcuts(app, bounds)) },
             onEdit = { onChange(LauncherOverlay.EditPopup(overlay.app)) },
             onDetails = { onChange(LauncherOverlay.AppDetails(it, overlay.app)) },
             onLaunchItem = { item, bounds ->

@@ -250,6 +250,7 @@ fun HomeScreen(
                 folder = folder,
                 app = app,
                 highlighted = highlightedAppKey == folder.key,
+                notification = uiState.notificationsFor(app, expanded = false).firstOrNull(),
                 onOpen = { onOpenFolder(folder, it) },
                 onLongClick = { onEditFolder(folder) },
                 onDrag = { bounds, expanded -> onFolderDrag(folder, bounds, expanded) },

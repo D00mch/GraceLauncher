@@ -1060,8 +1060,7 @@ internal fun LauncherScreen(
         AppDrawerScreen(
             model = model,
             folderApps = (uiState.folders + listOfNotNull(workFolder, privateFolder, recentFolder)).associate { it.id to uiState.folderItem(it) },
-            notifications = uiState.notifications,
-            popupSettings = popupSettings,
+            notificationFor = { uiState.notificationsFor(it, expanded = false).firstOrNull() },
             listState = drawerState,
             selectedLetter = selectedLetter,
             topSpace = drawerTop,

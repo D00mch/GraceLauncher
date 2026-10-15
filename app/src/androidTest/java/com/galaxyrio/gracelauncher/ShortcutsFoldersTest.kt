@@ -55,6 +55,37 @@ class ShortcutsFoldersTest {
         assertEquals(listOf(silent), expandedOnly.notificationsFor(owner, expanded = true))
     }
 
+    @Test fun outerRowsAggregateMemberAppsWithoutDuplicatingOrRecursingIntoTheirPopups() {
+        val own = AppNotification("own", owner.packageName, "Own", "Body", 1, 1, true, true)
+        val child = own.copy(key = "child", packageName = target.packageName, postedAt = 2)
+        val state = LauncherUiState(apps = listOf(owner, target), folders = listOf(folder),
+            notifications = mapOf(owner.packageName to listOf(own), target.packageName to listOf(child)),
+            popups = mapOf(owner.key to listOf(PopupItem(target.key), PopupItem(owner.key), PopupItem(target.key)),
+                target.key to listOf(PopupItem(owner.key))))
+        assertEquals(listOf(child, own), state.notificationsFor(owner, expanded = false))
+        assertEquals(listOf(child), state.notificationsFor(folder.asApp(), expanded = false))
+        assertEquals(listOf(own), state.ownNotificationsFor(owner, expanded = true))
+        assertEquals(listOf(child), state.ownNotificationsFor(target, expanded = true))
+        assertTrue(state.copy(notifications = emptyMap()).notificationsFor(folder.asApp(), false).isEmpty())
+    }
+
+    @Test fun memberNotificationFilteringStillRespectsModesAndProfileIdentity() {
+        val silent = AppNotification("child", target.packageName, "Silent", "Body", 1, 1, true, true, silent = true)
+        val shortcut = LauncherShortcut("link", target.packageName, "Shortcut", null).asApp(target)
+        val workApp = target.copy(user = android.os.Process.myUserHandle(), userSerial = 10, isWorkProfile = true)
+        val state = LauncherUiState(apps = listOf(owner, target, workApp), shortcutApps = listOf(shortcut),
+            notifications = mapOf(target.packageName to listOf(silent)),
+            settings = LauncherSettings(shortcutsFolders = ShortcutsFoldersSettings(silentNotifications = NotificationDisplay.ExpandedOnly)),
+            popups = mapOf(owner.key to listOf(PopupItem(target.key))))
+        assertTrue(state.notificationsFor(owner, false).isEmpty())
+        assertEquals(listOf(silent), state.notificationsFor(owner, true))
+        assertTrue(state.copy(settings = state.settings.copy(shortcutsFolders = ShortcutsFoldersSettings(enabled = false)))
+            .notificationsFor(owner, true).isEmpty())
+        val nonAppEntries = state.copy(popups = mapOf(owner.key to listOf(PopupItem(shortcut.key), PopupItem(workApp.key),
+            PopupItem("widget:1", HomeLayout(widgetId = 1, widgetProvider = "fixture.target/Widget")), PopupItem("missing/Activity"))))
+        assertTrue(nonAppEntries.notificationsFor(owner, true).isEmpty())
+    }
+
     @Test fun permissionPromptMovesIntoNewSettingsPageAndModesAreSingleChoice() {
         var state by mutableStateOf(LauncherUiState())
         compose.setContent {

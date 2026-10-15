@@ -37,7 +37,6 @@ import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.LauncherFolder
 import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
 import com.galaxyrio.gracelauncher.data.notifications.AppNotification
-import com.galaxyrio.gracelauncher.data.ShortcutsFoldersSettings
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.ui.components.AppRowGestures
 import com.galaxyrio.gracelauncher.ui.components.LauncherAppRow
@@ -67,8 +66,7 @@ fun AppDrawerScreen(
     onEditFolder: (LauncherFolder) -> Unit = {},
     onFolderDrag: (LauncherFolder, Rect, Boolean) -> Unit = { _, _, _ -> },
     onFolderDragEnd: (Boolean) -> Unit = {},
-    notifications: Map<String, List<AppNotification>> = emptyMap(),
-    popupSettings: ShortcutsFoldersSettings = ShortcutsFoldersSettings(),
+    notificationFor: (LauncherApp) -> AppNotification? = { null },
     folderApps: Map<String, LauncherApp> = emptyMap(),
     privateExpanded: Boolean = false,
     privateAppsPublic: Boolean = false,
@@ -160,14 +158,13 @@ fun AppDrawerScreen(
                         onSwipeRight = { onAppShortcuts(item.app, it) },
                         gestures = rowGestures,
                         highlighted = highlightedAppKey == item.app.key,
-                        notification = notifications[item.app.packageName]?.firstOrNull {
-                            popupSettings.showsNotification(it.silent, expanded = false)
-                        }.takeUnless { item.app.user != null },
+                        notification = notificationFor(item.app),
                     )
                     is DrawerItem.Folder -> FolderRow(
                         showLabel = listAppearance.showNames(favorites = false),
                         folder = item.folder,
                         app = folderApps[item.folder.id] ?: item.folder.asApp(),
+                        notification = notificationFor(folderApps[item.folder.id] ?: item.folder.asApp()),
                         highlighted = highlightedAppKey == item.folder.key,
                         onOpen = { onOpenFolder(item.folder, it) },
                         onLongClick = { onEditFolder(item.folder) },
