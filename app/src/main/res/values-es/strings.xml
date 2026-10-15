@@ -647,4 +647,14 @@
     <string name="settings_folder_auto_hide">Ocultar automáticamente las aplicaciones del interior</string>
     <string name="settings_folder_auto_hide_summary">Ocultar los elementos actuales y futuros de la lista de aplicaciones. Las ocultaciones manuales se mantienen cuando las aplicaciones salen de esta carpeta.</string>
     <string name="hidden_from_folder">Oculto por la carpeta</string>
+    <string name="hide_recently_installed">Ocultar recientemente instaladas</string>
+    <string name="settings_recently_installed_summary">Mostrar las 8 aplicaciones instaladas más recientemente en la lista de aplicaciones</string>
+    <string name="settings_additional_screen">Pantalla adicional</string>
+    <string name="widget_screen_title">Pantalla de widgets</string>
+    <string name="widget_screen_enable">Habilitar la pantalla de widgets</string>
+    <string name="widget_screen_swipe">Desliza hacia la izquierda en la página de inicio</string>
+    <string name="widget_screen_swipe_disabled">Puedes abrir esta pantalla usando un gesto o una acción del botón Grace</string>
+    <string name="widget_screen_columns">Celdas por fila</string>
+    <string name="widget_screen_edit">Editar pantalla de widgets</string>
+    <string name="widget_screen_open">Abrir pantalla de widgets</string>
 </resources>
