@@ -51,19 +51,25 @@ class AppRepository(private val context: Context, private val iconPacks: IconPac
 
     suspend fun loadApps(iconPackPackage: String?): List<LauncherApp> = loadApps(listOfNotNull(iconPackPackage))
 
+    /** Cheap startup validation; no labels, artwork, icon packs or foreign resources are loaded. */
+    internal suspend fun launchableComponents(): Set<ComponentName> = withContext(Dispatchers.IO) {
+        queryLauncherActivities().map { ComponentName(it.activityInfo.packageName, it.activityInfo.name) }.toSet()
+    }
+
+    private fun queryLauncherActivities(): List<android.content.pm.ResolveInfo> {
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0L))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.queryIntentActivities(intent, 0)
+        }
+    }
+
     suspend fun loadApps(iconPackPackages: List<String> = emptyList()): List<LauncherApp> = withContext(Dispatchers.IO) {
         val packs = normalizeIconPackOrder(iconPackPackages).mapNotNull { iconPacks.load(it) }
         val coroutine = currentCoroutineContext()
-        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packageManager.queryIntentActivities(
-                launcherIntent,
-                PackageManager.ResolveInfoFlags.of(0L),
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            packageManager.queryIntentActivities(launcherIntent, 0)
-        }
+        val resolved = queryLauncherActivities()
 
         val englishLabels = EnglishLabelReader(context)
         val installTimes = mutableMapOf<String, Long>()

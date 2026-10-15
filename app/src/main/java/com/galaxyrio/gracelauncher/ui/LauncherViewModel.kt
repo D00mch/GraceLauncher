@@ -9,6 +9,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
+import android.content.res.Configuration
 import android.os.UserHandle
 import android.os.Process
 import android.graphics.Rect
@@ -19,6 +21,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.galaxyrio.gracelauncher.data.AppRepository
+import com.galaxyrio.gracelauncher.data.CachedLauncherApps
+import com.galaxyrio.gracelauncher.data.LauncherAppCache
 import com.galaxyrio.gracelauncher.data.CalendarRepository
 import com.galaxyrio.gracelauncher.data.FavoritesStore
 import com.galaxyrio.gracelauncher.data.LauncherApp
@@ -41,6 +45,7 @@ import com.galaxyrio.gracelauncher.data.icons.ItemIconStore
 import com.galaxyrio.gracelauncher.data.icons.GraceButtonIcon
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.IconDesign
+import com.galaxyrio.gracelauncher.data.launcherThemeSeed
 import com.galaxyrio.gracelauncher.data.PopupItem
 import com.galaxyrio.gracelauncher.data.LauncherItemsRepository
 import com.galaxyrio.gracelauncher.data.LauncherItemsSnapshot
@@ -80,6 +85,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.LocalDate
 
 enum class ScheduleStatus {
     PermissionRequired,
@@ -266,6 +272,9 @@ data class LauncherUiState(
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
     private val iconPacks = IconPackRepository(application)
     private val appRepository = AppRepository(application, iconPacks)
+    private val appCache = LauncherAppCache(application)
+    private var startupCacheAttempted = false
+    private var appLoadKey: String? = null
     private val privateAppCache = PrivateAppCache(application)
     private var privateRawApps: List<LauncherApp> = emptyList()
     private var privateSavedApps: List<LauncherApp> = emptyList()
@@ -312,19 +321,23 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
     private val launcherApps = application.getSystemService(LauncherApps::class.java)
     private val profilePackages = object : LauncherApps.Callback() {
-        private fun refresh(user: UserHandle) { if (user != Process.myUserHandle()) refreshApps() }
         private fun changed(user: UserHandle, packages: Collection<String>) {
             appRepository.invalidateProfileApps(user, packages)
-            refresh(user)
+            refreshApps()
         }
         override fun onPackageAdded(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
         override fun onPackageRemoved(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
         override fun onPackageChanged(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
         override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            if (replacing) changed(user, packageNames.toList()) else refresh(user)
+            if (replacing) changed(user, packageNames.toList()) else refreshApps()
         }
         override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            if (replacing) changed(user, packageNames.toList()) else refresh(user)
+            if (replacing) changed(user, packageNames.toList()) else refreshApps()
+        }
+        override fun onPackagesSuspended(packageNames: Array<out String>, user: UserHandle) = refreshApps()
+        override fun onPackagesUnsuspended(packageNames: Array<out String>, user: UserHandle) = refreshApps()
+        override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<ShortcutInfo>, user: UserHandle) {
+            if (itemsSnapshot.shortcuts.any { it.packageName == packageName }) refreshApps()
         }
     }
 
@@ -438,7 +451,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         refreshApps()
     }
 
-    fun refreshApps() {
+    fun refreshApps(forceReload: Boolean = true) {
         mediaRepository.refresh()
         refreshWeather()
         // Both HOME and the standalone settings Activity call this on resume;
@@ -451,12 +464,45 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         // Private icons must follow appearance changes even if another inventory
         // fails or prefetch is slow. Locked profiles defer this work until opened.
         refreshPrivateApps()
-        appLoadJob?.cancel()
         val iconSettings = _uiState.value.settings
         val snapshot = itemsSnapshot
+        val hasShortcutAccess = shortcutRepository.hasAccess()
+        val renames = preferences.renames()
+        val themedIcons = preferences.themedIcons
+        val context = getApplication<Application>()
+        val key = LauncherAppCache.key(buildString {
+            append(iconSettings); append(snapshot.icons.toSortedMap()); append(snapshot.shortcuts.sortedBy { it.itemKey })
+            append(_uiState.value.folders); append(renames.toSortedMap()); append(themedIcons)
+            append(preferences.categories().toSortedMap()); append(preferences.textMode)
+            append(Configuration(context.resources.configuration)); append(LocalDate.now())
+            append(launcherThemeSeed(context.resources, true, iconSettings.themeColor))
+            append(context.applicationInfo.sourceDir); append(isDefaultHome); append(hasShortcutAccess)
+        })
+        // HOME/resume is not an inventory change. Keep a running load alive and
+        // reuse a completed list; package/profile/settings callbacks force a refresh.
+        if (!forceReload && key == appLoadKey && (appLoadJob?.isActive == true ||
+                (!_uiState.value.isLoadingApps && !_uiState.value.appLoadFailed))) return
+        appLoadJob?.cancel()
+        appLoadKey = key
         appLoadJob = viewModelScope.launch {
             _uiState.update {
-                it.copy(isLoadingApps = true, appLoadFailed = false, isLoadingIconPacks = true, hasShortcutAccess = shortcutRepository.hasAccess())
+                it.copy(isLoadingApps = true, appLoadFailed = false, isLoadingIconPacks = true, hasShortcutAccess = hasShortcutAccess)
+            }
+            if (!startupCacheAttempted) {
+                startupCacheAttempted = true
+                val cached = appCache.load(key)
+                if (cached != null) {
+                    val preview = try { cached.installed(appRepository.launchableComponents()) }
+                    catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { null }
+                    if (preview != null) {
+                        val favorites = favoritesStore.favoritesFor(preview.apps)
+                        _uiState.update { it.copy(apps = preview.apps,
+                            shortcutApps = preview.shortcuts + it.shortcutApps.filter(LauncherApp::isPrivateSpace),
+                            folderApps = preview.folders, graceButtonApp = preview.graceButton ?: it.graceButtonApp,
+                            favoriteKeys = favorites.toSet(), favoriteOrder = favorites) }
+                    }
+                }
             }
             try {
                 val installed = iconPacks.installedPacks()
@@ -475,8 +521,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val workProfiles = runCatching { appRepository.workProfiles() }.getOrDefault(emptyList())
             runCatching { appRepository.loadApps(selectedPacks) + appRepository.loadWorkApps(workProfiles, selectedPacks) }
                 .onSuccess { apps ->
-                    val renames = preferences.renames()
-                    suspend fun decorate(app: LauncherApp): LauncherApp = itemIcons.applyDesign(app, snapshot.icons[app.key], iconSettings.iconDesign, iconSettings, preferences.themedIcons)
+                    suspend fun decorate(app: LauncherApp): LauncherApp = itemIcons.applyDesign(app, snapshot.icons[app.key], iconSettings.iconDesign, iconSettings, themedIcons)
                         .copy(label = renames[app.key] ?: app.originalLabel, showWorkIndicator = iconSettings.workProfile.showIndicator)
                     val shortcuts = snapshot.shortcuts.mapNotNull { saved ->
                         // Package names alone cannot distinguish personal and work installations.
@@ -503,6 +548,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     val workFolderApp = itemIcons.apply(_uiState.value.workFolder.asApp(), snapshot.icons[WorkProfileFolderKey], iconSettings)
                     val graceButtonApp = itemIcons.apply(GraceButtonIcon.item(getApplication()),
                         GraceButtonIcon.choice(snapshot.icons[GraceButtonIcon.key]), iconSettings)
+                    // Legacy preferences are not Room flows. A rename/theme edit
+                    // during rendering must not be overwritten by this older load.
+                    if (preferences.renames() != renames || preferences.themedIcons != themedIcons) {
+                        refreshApps()
+                        return@onSuccess
+                    }
                     val favorites = favoritesStore.favoritesFor(displayedApps)
                     _uiState.update {
                         it.copy(
@@ -525,6 +576,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                             isLoadingApps = false,
                         )
                     }
+                    // Publish first; PNG encoding and disk I/O run on Dispatchers.IO.
+                    appCache.save(key, CachedLauncherApps(displayedApps, shortcuts, folderApps, graceButtonApp))
                     shortcutRepository.prefetch(_uiState.value.favoriteApps)
                 }
                 .onFailure {
