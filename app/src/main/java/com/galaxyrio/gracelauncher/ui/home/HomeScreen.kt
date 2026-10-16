@@ -32,7 +32,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
@@ -93,7 +92,6 @@ import com.galaxyrio.gracelauncher.ui.widgets.rememberHostedWidget
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
-import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 @Composable
@@ -122,12 +120,7 @@ fun HomeScreen(
     onWidgetHeightChange: (Int) -> Unit = {},
     onHomeGesture: (GraceButtonGesture, Offset) -> Unit = { _, _ -> },
 ) {
-    val now by produceState(initialValue = Instant.now()) {
-        while (true) {
-            value = Instant.now()
-            delay(60_000 - System.currentTimeMillis() % 60_000)
-        }
-    }
+    val now by rememberHomeTime()
     val event = if (uiState.settings.calendarAgenda) nextVisibleEvent(uiState.events, now) else null
     val favorites = uiState.favoriteItems
     val favoriteFolders = uiState.favoriteFolders.associateBy { it.id }
