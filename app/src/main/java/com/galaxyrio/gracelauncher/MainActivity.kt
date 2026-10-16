@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        launcherViewModel.refreshApps(forceReload = false)
+        launcherViewModel.refreshOnResume()
         launcherViewModel.refreshSchedule()
     }
 

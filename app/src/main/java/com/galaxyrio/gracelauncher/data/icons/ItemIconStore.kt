@@ -17,6 +17,7 @@ import android.util.LruCache
 import android.util.Log
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import com.galaxyrio.gracelauncher.data.ItemIcon
 import com.galaxyrio.gracelauncher.data.IconDesign
 import com.galaxyrio.gracelauncher.data.LauncherApp
@@ -39,10 +40,11 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
     private val images = LruCache<String, Bitmap>(12)
     private val themePalettes = LruCache<Triple<Int, Boolean, PaletteStyle>, Pair<Int, Int>>(8)
     private val appPalettes = LruCache<Triple<Int, Boolean, PaletteStyle>, Pair<Int, Int>>(256)
-    private data class ProfileRenderSignature(val source: Any?, val choice: ItemIcon,
-        val packs: List<LoadedIconPack?>, val theme: Pair<Int, Int>, val dynamic: Pair<Int, Int>,
+    private data class RenderSignature(val source: Any?, val choice: ItemIcon,
+        val packs: List<Any?>, val theme: Pair<Int, Int>, val dynamic: Pair<Int, Int>,
         val fromApp: Pair<Int, Int>?, val configuration: Configuration, val day: LocalDate)
-    private val profileRenders = IconSnapshotCache<ProfileRenderSignature, LauncherApp>()
+    private val renderedIcons = IconSnapshotCache<RenderSignature, ImageBitmap>(maxBytes = 16 * 1024 * 1024,
+        sizeOf = { iconBitmapBytes(it) })
 
     private fun imageBitmap(name: String, size: Int): Bitmap? = runCatching {
         val key = "$name:$size"
@@ -135,9 +137,9 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
                     if (size != 144) systemDrawable(app)?.let { return@withContext iconLayers(it, size) }
                     source.layers()?.let { return@withContext it }
                 }
+                val drawable = systemDrawable(app)
+                if (drawable != null) return@withContext iconLayers(drawable, size)
             }
-            val drawable = if (app.shortcut == null && choice.kind in setOf("theme", "system", "pack")) systemDrawable(app) else null
-            if (drawable != null) return@withContext iconLayers(drawable, size)
             val bitmap = if (choice.kind == "image") imageBitmap(choice.source, size) else null
             (bitmap ?: (app.shortcut?.icon ?: app.icon)?.asAndroidBitmap())?.let {
                 IconLayers(it, monochrome = if (bitmap == null) app.monochromeIcon?.asAndroidBitmap() else null)
@@ -201,28 +203,33 @@ class ItemIconStore(private val context: Context, private val packs: IconPackRep
         val choice = (special ?: ItemIcon.Theme).let {
             it.copy(design = (it.design?.withThemeDefaults(shared) ?: shared).copy(iconSize = shared.iconSize))
         }
-        if (app.userSerial == null) return apply(app, choice, settings)
         return withContext(Dispatchers.IO) {
             // Only visual inputs belong in this key. Opening a folder, ordering apps,
-            // changing badges or other settings must not redraw the whole profile.
+            // changing badges or other settings must not redraw the whole catalog.
             val selectedPacks = when (choice.kind) {
                 "theme" -> settings.enabledIconPackPackages
                 "pack" -> listOf(choice.source)
                 else -> emptyList()
             }
-            val signature = ProfileRenderSignature(app.profileIconSource ?: app.icon, choice,
-                selectedPacks.map { packs.load(it) }, themeColors(settings), dynamicColors(settings),
+            val signature = RenderSignature(app.iconSourceRevision ?: app.profileIconSource?.cacheKey ?: app.icon, choice,
+                selectedPacks.map { packs.load(it)?.cacheKey }, themeColors(settings), dynamicColors(settings),
                 if (choice.design?.background?.fromApp == true || choice.design?.foreground?.fromApp == true)
                     appColors(app.originalIconColor, settings) else null,
                 Configuration(context.resources.configuration), LocalDate.now())
-            val rendered = profileRenders.get(app.key, signature) ?: apply(app, choice, settings).also {
-                // Rendering failures fall back to app.icon; don't memoize that failure.
-                if (it.icon != null && it.icon !== app.icon) profileRenders.put(app.key, signature, it)
+            // A successful design produces only a bitmap. All metadata comes from the
+            // current app/choice, so a cache hit cannot restore old labels or badges.
+            renderedIcons.get(app.key, signature)?.let { icon ->
+                return@withContext app.copy(icon = icon, monochromeIcon = null, iconDisplay = choice.display,
+                    iconPackPackage = when (choice.kind) {
+                        "theme" -> app.themeIconPackPackage
+                        "pack" -> choice.source
+                        else -> null
+                    })
             }
-            // Never reuse labels, shortcuts, badges or profile state from the cache.
-            app.copy(icon = rendered.icon, monochromeIcon = rendered.monochromeIcon,
-                monochromeScale = rendered.monochromeScale, iconPackPackage = rendered.iconPackPackage,
-                iconDisplay = rendered.iconDisplay)
+            apply(app, choice, settings).also {
+                // Rendering failures fall back to app.icon; don't memoize that failure.
+                if (it.icon != null && it.icon !== app.icon) renderedIcons.put(app.key, signature, it.icon)
+            }
         }
     }
 

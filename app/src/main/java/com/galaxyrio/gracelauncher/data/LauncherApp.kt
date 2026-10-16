@@ -43,6 +43,8 @@ data class LauncherApp(
     val isAppStack: Boolean = false,
     /** Original profile artwork survives pack/design changes and temporary quiet mode. */
     val profileIconSource: com.galaxyrio.gracelauncher.data.icons.ProfileIconSource? = null,
+    /** Identifies personal-profile source artwork without retaining its decoded layers in the UI. */
+    val iconSourceRevision: Any? = null,
     /** Provider-supplied English label; never replaces the displayed name. */
     val englishLabel: String? = null,
 ) {

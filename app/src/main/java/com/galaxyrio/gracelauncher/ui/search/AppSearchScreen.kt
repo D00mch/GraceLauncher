@@ -110,9 +110,7 @@ internal fun AppSearchScreen(
     val apps = remember(uiState.allApps, uiState.effectiveHiddenAppKeys, settings.hiddenApps) {
         uiState.allApps.filter { it.folderId == null && (settings.hiddenApps || it.key !in uiState.effectiveHiddenAppKeys) }
     }
-    val names = remember(apps) { apps.associate {
-        it.key to it.searchNames()
-    } }
+    val names = rememberAppSearchNames(apps)
     val results: List<SearchResult> = remember(apps, names, contacts, query, settings, hasContactsAccess) {
         if (query.isEmpty()) {
             if (settings.suggestions) {
@@ -122,7 +120,7 @@ internal fun AppSearchScreen(
         } else {
             val term = SearchQuery(query, settings.fuzzy)
             val matchedApps = apps.mapNotNull { app ->
-                val score = names.getValue(app.key).score(term) ?: return@mapNotNull null
+                val score = names?.get(app.key)?.score(term) ?: return@mapNotNull null
                 score to app
             }.sortedWith(compareBy<Pair<Int, LauncherApp>> { it.first }.thenComparator { a, b -> LauncherAppOrder.compare(a.second, b.second) })
             val matchedContacts = if (settings.contacts && hasContactsAccess) contacts.mapNotNull { contact ->
@@ -185,7 +183,7 @@ internal fun AppSearchScreen(
             // The shared connection feeds both edges even when all results fit.
             overscrollEffect = null,
             contentPadding = PaddingValues(top = searchBarHeight / 2 + 16.dp, bottom = 24.dp + bottomInset)) {
-            if (query.isNotEmpty() && results.isEmpty()) item {
+            if (query.isNotEmpty() && names != null && results.isEmpty()) item {
                 Text(stringResource(R.string.search_no_results), Modifier.padding(20.dp), color = appearance.text)
             }
             itemsIndexed(results, key = { _, result -> result.key }) { index, result ->

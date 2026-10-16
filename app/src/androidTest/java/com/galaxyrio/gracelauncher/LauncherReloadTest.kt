@@ -93,22 +93,22 @@ class LauncherReloadTest {
         }
         try {
             awaitApps(model)
+            lateinit var loaded: List<LauncherApp>
             instrumentation.runOnMainSync {
-                val loaded = model.uiState.value.apps
+                loaded = model.uiState.value.apps
                 repeat(3) {
-                    model.refreshApps(forceReload = false)
+                    model.refreshOnResume()
                     assertFalse(model.uiState.value.isLoadingApps)
                     assertSame(loaded, model.uiState.value.apps)
                 }
                 model.refreshApps()
-                assertTrue(model.uiState.value.isLoadingApps)
             }
-            awaitApps(model)
+            awaitApps(model, loaded)
         } finally { instrumentation.runOnMainSync { store.clear() } }
     }
 
-    private suspend fun awaitApps(model: LauncherViewModel) = withTimeout(30_000) {
-        val state = model.uiState.first { !it.isLoadingSettings && !it.isLoadingApps }
+    private suspend fun awaitApps(model: LauncherViewModel, previous: List<LauncherApp>? = null) = withTimeout(30_000) {
+        val state = model.uiState.first { !it.isLoadingSettings && !it.isLoadingApps && it.apps !== previous }
         assertFalse(state.settingsLoadFailed)
         assertFalse(state.appLoadFailed)
     }

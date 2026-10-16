@@ -21,6 +21,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -124,6 +125,7 @@ class LauncherSettingsIntegrationTest {
         compose.onNodeWithTag("settings_root").assertDoesNotExist()
         compose.onNodeWithTag("launcher_sheet").assertDoesNotExist()
         compose.onNodeWithTag("app_search_query").performTextReplacement("Vault")
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("app:${apps.last().key}").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("app:${apps.last().key}").assertIsDisplayed()
         compose.onNodeWithTag("app_search_query").performTextReplacement("cAm")
         compose.onNodeWithTag("app:${apps[1].key}").assertIsDisplayed()
@@ -252,6 +254,7 @@ class LauncherSettingsIntegrationTest {
             throw failure
         }
         compose.onNodeWithTag("app_search_query").performTextReplacement("Gmail")
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("app:${apps[3].key}").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("app:${apps[3].key}").assertIsDisplayed()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         compose.onNodeWithText(context.getString(R.string.cancel)).performClick()
