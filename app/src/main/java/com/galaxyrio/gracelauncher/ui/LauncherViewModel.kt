@@ -7,6 +7,7 @@ import android.content.Context
 import android.net.Uri
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
 import android.content.pm.PackageManager
 import android.content.pm.LauncherApps
 import android.os.UserHandle
@@ -20,6 +21,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.galaxyrio.gracelauncher.data.AppRepository
 import com.galaxyrio.gracelauncher.data.CalendarRepository
+import com.galaxyrio.gracelauncher.data.CatalogRefreshState
 import com.galaxyrio.gracelauncher.data.FavoritesStore
 import com.galaxyrio.gracelauncher.data.LauncherApp
 import com.galaxyrio.gracelauncher.data.LauncherAppOrder
@@ -80,6 +82,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.LocalDate
 
 enum class ScheduleStatus {
     PermissionRequired,
@@ -297,6 +300,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     val returnHomeRequests = _returnHomeRequests.asSharedFlow()
 
     private var appLoadJob: Job? = null
+    private data class CatalogInputs(val configuration: Configuration, val day: LocalDate,
+        val renames: Map<String, String>, val themedIcons: Boolean, val shortcutAccess: Boolean)
+    private val catalogRefresh = CatalogRefreshState<CatalogInputs>()
     private var privateAppLoadJob: Job? = null
     private var scheduleLoadJob: Job? = null
     private var weatherLoadJob: Job? = null
@@ -304,6 +310,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == Intent.ACTION_PACKAGE_REMOVED && intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return
+            intent?.data?.schemeSpecificPart?.let { packageName ->
+                appRepository.invalidateApps(Process.myUserHandle(), listOf(packageName))
+                if (packageName == BreezyWeatherRepository.PACKAGE_NAME) refreshWeather()
+            }
             refreshApps()
         }
     }
@@ -312,19 +322,23 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
     private val launcherApps = application.getSystemService(LauncherApps::class.java)
     private val profilePackages = object : LauncherApps.Callback() {
-        private fun refresh(user: UserHandle) { if (user != Process.myUserHandle()) refreshApps() }
         private fun changed(user: UserHandle, packages: Collection<String>) {
-            appRepository.invalidateProfileApps(user, packages)
-            refresh(user)
+            appRepository.invalidateApps(user, packages)
+            refreshApps()
         }
         override fun onPackageAdded(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
         override fun onPackageRemoved(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
         override fun onPackageChanged(packageName: String, user: UserHandle) = changed(user, listOf(packageName))
         override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            if (replacing) changed(user, packageNames.toList()) else refresh(user)
+            if (replacing) changed(user, packageNames.toList()) else refreshApps()
         }
         override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            if (replacing) changed(user, packageNames.toList()) else refresh(user)
+            if (replacing) changed(user, packageNames.toList()) else refreshApps()
+        }
+        override fun onPackagesSuspended(packageNames: Array<out String>, user: UserHandle) = refreshApps()
+        override fun onPackagesUnsuspended(packageNames: Array<out String>, user: UserHandle) = refreshApps()
+        override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<android.content.pm.ShortcutInfo>, user: UserHandle) {
+            if (itemsSnapshot.shortcuts.any { it.packageName == packageName }) refreshApps()
         }
     }
 
@@ -382,6 +396,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             addAction(Intent.ACTION_TIME_CHANGED)
             addAction(Intent.ACTION_TIMEZONE_CHANGED)
             addAction(Intent.ACTION_WALLPAPER_CHANGED)
+            addAction(Intent.ACTION_CONFIGURATION_CHANGED)
             addAction(Intent.ACTION_MANAGED_PROFILE_ADDED)
             addAction(Intent.ACTION_MANAGED_PROFILE_REMOVED)
             addAction(Intent.ACTION_MANAGED_PROFILE_AVAILABLE)
@@ -424,7 +439,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                         previous.settings.darkMode != snapshot.settings.darkMode ||
                         previous.settings.useDynamicColors != snapshot.settings.useDynamicColors ||
                         previous.settings.themeColor != snapshot.settings.themeColor ||
-                        previous.settings.paletteStyle != snapshot.settings.paletteStyle) refreshApps()
+                        previous.settings.paletteStyle != snapshot.settings.paletteStyle ||
+                        previous.folders != snapshot.folders) refreshApps()
                     if (previous.settings.privateSpace != snapshot.settings.privateSpace) refreshPrivateApps()
                     if (previous.isLoadingSettings || previous.settings.weatherEnabled != snapshot.settings.weatherEnabled ||
                         previous.settings.weatherLocationId != snapshot.settings.weatherLocationId
@@ -438,43 +454,68 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         refreshApps()
     }
 
+    private fun catalogInputs() = CatalogInputs(Configuration(getApplication<Application>().resources.configuration),
+        LocalDate.now(), preferences.renames(), preferences.themedIcons, shortcutRepository.hasAccess())
+
+    /** Explicit changes/retries invalidate the catalog; ordinary resumes only check its inputs. */
     fun refreshApps() {
+        catalogRefresh.invalidate()
+        refreshOnResume()
+    }
+
+    fun refreshOnResume() {
         mediaRepository.refresh()
-        refreshWeather()
-        // Both HOME and the standalone settings Activity call this on resume;
-        // also refresh after the role request, including cancellation.
+        refreshWeather(force = false)
         val isDefaultHome = DefaultHome.isDefault(getApplication())
         privateSpaceController.refresh()
-        _uiState.update { it.copy(isDefaultHome = isDefaultHome) }
+        if (_uiState.value.privateAppsFailed) refreshPrivateApps()
+        val favorites = _uiState.value.takeUnless { it.isLoadingApps || it.appLoadFailed }
+            ?.let { favoritesStore.favoritesFor(it.apps) }
+        _uiState.update { it.copy(isDefaultHome = isDefaultHome, hasShortcutAccess = shortcutRepository.hasAccess(),
+            categories = preferences.categories(), textMode = preferences.textMode,
+            favoriteKeys = favorites?.toSet() ?: it.favoriteKeys, favoriteOrder = favorites ?: it.favoriteOrder) }
         // Wait for the stored pack choice: do not flash system icons on cold start.
         if (!itemsReady || _uiState.value.isLoadingSettings || _uiState.value.settingsLoadFailed) return
-        // Private icons must follow appearance changes even if another inventory
-        // fails or prefetch is slow. Locked profiles defer this work until opened.
-        refreshPrivateApps()
-        appLoadJob?.cancel()
-        val iconSettings = _uiState.value.settings
-        val snapshot = itemsSnapshot
+        if (appLoadJob?.isActive == true || catalogRefresh.pending(catalogInputs()) == null) return
         appLoadJob = viewModelScope.launch {
-            _uiState.update {
-                it.copy(isLoadingApps = true, appLoadFailed = false, isLoadingIconPacks = true, hasShortcutAccess = shortcutRepository.hasAccess())
-            }
-            try {
-                val installed = iconPacks.installedPacks()
-                _uiState.update { it.copy(iconPacks = installed, isLoadingIconPacks = false, iconPacksLoadFailed = false) }
-            } catch (error: Exception) {
-                if (error is CancellationException) throw error
-                _uiState.update { it.copy(isLoadingIconPacks = false, iconPacksLoadFailed = true) }
-            }
-            val selectedPacks = iconSettings.enabledIconPackPackages
-            val availablePacks = selectedPacks.mapNotNull { iconPacks.load(it) }
-            val status = when {
-                selectedPacks.isEmpty() -> IconPackStatus.System
-                availablePacks.isNotEmpty() -> IconPackStatus.Ready
-                else -> IconPackStatus.Unavailable
-            }
-            val workProfiles = runCatching { appRepository.workProfiles() }.getOrDefault(emptyList())
-            runCatching { appRepository.loadApps(selectedPacks) + appRepository.loadWorkApps(workProfiles, selectedPacks) }
-                .onSuccess { apps ->
+            // Resumes share this job. A change during IO queues one pass for the latest inputs.
+            while (true) {
+                val request = catalogRefresh.start(catalogInputs()) ?: break
+                val iconSettings = _uiState.value.settings
+                val snapshot = itemsSnapshot
+                var incomplete = false
+                refreshPrivateApps()
+                _uiState.update {
+                    it.copy(isLoadingApps = true, appLoadFailed = false, isLoadingIconPacks = true, hasShortcutAccess = shortcutRepository.hasAccess())
+                }
+                try {
+                    val installed = iconPacks.installedPacks()
+                    _uiState.update { it.copy(iconPacks = installed, isLoadingIconPacks = false, iconPacksLoadFailed = false) }
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    incomplete = true
+                    _uiState.update { it.copy(isLoadingIconPacks = false, iconPacksLoadFailed = true) }
+                }
+                val selectedPacks = iconSettings.enabledIconPackPackages
+                val availablePacks = selectedPacks.mapNotNull { iconPacks.load(it) }
+                val status = when {
+                    selectedPacks.isEmpty() -> IconPackStatus.System
+                    availablePacks.isNotEmpty() -> IconPackStatus.Ready
+                    else -> IconPackStatus.Unavailable
+                }
+                try {
+                    val workProfiles = try { appRepository.workProfiles() } catch (error: Exception) {
+                        if (error is CancellationException) throw error
+                        incomplete = true
+                        _uiState.value.workProfiles
+                    }
+                    val apps = appRepository.loadApps(selectedPacks) + workProfiles.flatMap { profile ->
+                        try { appRepository.loadWorkApps(profile, selectedPacks) } catch (error: Exception) {
+                            if (error is CancellationException) throw error
+                            incomplete = true
+                            emptyList()
+                        }
+                    }
                     val renames = preferences.renames()
                     suspend fun decorate(app: LauncherApp): LauncherApp = itemIcons.applyDesign(app, snapshot.icons[app.key], iconSettings.iconDesign, iconSettings, preferences.themedIcons)
                         .copy(label = renames[app.key] ?: app.originalLabel, showWorkIndicator = iconSettings.workProfile.showIndicator)
@@ -503,6 +544,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     val workFolderApp = itemIcons.apply(_uiState.value.workFolder.asApp(), snapshot.icons[WorkProfileFolderKey], iconSettings)
                     val graceButtonApp = itemIcons.apply(GraceButtonIcon.item(getApplication()),
                         GraceButtonIcon.choice(snapshot.icons[GraceButtonIcon.key]), iconSettings)
+                    // Do not publish a theme/package revision superseded while IO was running.
+                    if (!catalogRefresh.isCurrent(request, catalogInputs())) continue
                     val favorites = favoritesStore.favoritesFor(displayedApps)
                     _uiState.update {
                         it.copy(
@@ -525,12 +568,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                             isLoadingApps = false,
                         )
                     }
+                    // Retry incomplete sections on the next resume, without spinning here.
+                    if (incomplete) return@launch
+                    catalogRefresh.complete(request, request.inputs)
                     shortcutRepository.prefetch(_uiState.value.favoriteApps)
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    if (catalogRefresh.isCurrent(request, catalogInputs())) {
+                        _uiState.update { it.copy(isLoadingApps = false, appLoadFailed = true) }
+                        return@launch // Leave this revision pending so the next resume/retry can load it.
+                    }
                 }
-                .onFailure {
-                    if (it is CancellationException) throw it
-                    _uiState.update { it.copy(isLoadingApps = false, appLoadFailed = true) }
-                }
+            }
         }
     }
 
@@ -583,7 +632,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     if (error is CancellationException) throw error
                     if (privateRawApps.isEmpty()) throw error
                 }
-                val packed = appRepository.applyPrivateIconPacks(privateRawApps, settings.enabledIconPackPackages)
+                val packed = appRepository.applyIconPacks(privateRawApps, settings.enabledIconPackPackages)
                 val apps = packed.map { app ->
                     itemIcons.applyDesign(app, snapshot.icons[app.key], settings.iconDesign, settings, preferences.themedIcons)
                 }
@@ -622,7 +671,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             return
         }
         if (!force && (weatherLoadJob?.isActive == true ||
-                SystemClock.elapsedRealtime() - lastWeatherRefresh < 15 * 60_000L)) return
+                (state.weather.status == WeatherStatus.Ready &&
+                    SystemClock.elapsedRealtime() - lastWeatherRefresh < 15 * 60_000L))) return
         weatherLoadJob?.cancel()
         val locationId = state.settings.weatherLocationId
         weatherLoadJob = viewModelScope.launch {
