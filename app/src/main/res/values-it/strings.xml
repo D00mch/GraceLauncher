@@ -465,7 +465,7 @@
     <string name="search_unnamed_contact">Contatto senza nome</string>
     <string name="search_files">Ricerca file</string>
     <string name="search_fuzzy">Ricerca fuzzy</string>
-    <string name="search_fuzzy_summary">Conta anche iniziali e spelling alternativi</string>
+    <string name="search_fuzzy_summary">Cerca per iniziali e lettere non consecutive</string>
     <string name="search_internet_setting">Ricerca web</string>
     <string name="search_engine">Motore di ricerca</string>
     <string name="search_engine_google">Google</string>
@@ -671,4 +671,8 @@
     <string name="app_stack_collapse">Comprimi pila di app</string>
     <string name="app_stack_empty">Scegli app o scorciatoie qui sotto.</string>
     <string name="app_stacks_empty">Nessuna pila di app</string>
+    <string name="favorites_shortcuts_app_group">Scorciatoie e raggruppamento app</string>
+    <string name="favorites_add_shortcut">Aggiungi scorciatoia</string>
+    <string name="favorites_add_folder">Aggiungi cartella</string>
+    <string name="favorites_add_app_stack">Aggiungi pila di app</string>
 </resources>
