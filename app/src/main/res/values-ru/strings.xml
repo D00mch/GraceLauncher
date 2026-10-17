@@ -148,7 +148,7 @@
     <string name="icon_edit_failed">Не удалось сохранить значок. Попробуйте другое изображение или значок.</string>
     <string name="edit_app_popup">Изменить меню «%1$s»</string>
     <string name="popup_app_shortcuts">Ярлыки «%1$s»</string>
-    <string name="popup_custom_widget">Виджет приложения</string>
+    <string name="popup_custom_widget">Свой виджет</string>
     <string name="popup_add_new">Добавить</string>
     <string name="popup_show_in_app_list">Показывать в списке приложений</string>
     <string name="popup_empty">Выберите ярлыки, приложения или виджеты ниже.</string>
@@ -210,7 +210,7 @@
     <string name="empty_folder">В этой папке нет приложений</string>
 
     <!-- Notifications -->
-    <string name="notification_dismiss">Убрать</string>
+    <string name="notification_dismiss">Смахнуть</string>
     <string name="notification_now">сейчас</string>
     <string name="notification_minutes">%1$d мин</string>
     <string name="notification_hours">%1$d ч</string>
@@ -237,7 +237,7 @@
     <string name="settings_title">Настройки</string>
     <string name="settings_back">Назад</string>
     <string name="settings_productivity">Продуктивность</string>
-    <string name="settings_productivity_summary">Обзор дня, приложения и папки</string>
+    <string name="settings_productivity_summary">Важное под рукой, приложения и папки</string>
     <string name="settings_themes">Оформление</string>
     <string name="settings_themes_summary">Цвета, внешний вид и персонализация</string>
     <string name="settings_advanced">Дополнительно</string>
@@ -370,7 +370,7 @@
 
     <!-- Icon display -->
     <string name="icon_display_section">Отображение значков</string>
-    <string name="icon_display_full">Обычные значки</string>
+    <string name="icon_display_full">Полные значки</string>
     <string name="icon_display_dot">Точки</string>
     <string name="icon_display_hidden">Только названия</string>
     <string name="icon_display_shared">общая настройка</string>
@@ -429,7 +429,7 @@
     <string name="icon_designer_shape_pebble">Галька</string>
     <string name="icon_designer_shape_square">Квадрат</string>
     <string name="icon_designer_shape_gem">Самоцвет</string>
-    <string name="icon_designer_shape_cookie">Печенье</string>
+    <string name="icon_designer_shape_cookie">Печенье с n сторонами</string>
     <string name="icon_designer_pebble_roundness">Округлость</string>
     <string name="icon_designer_square_corner_radius">Радиус скругления углов</string>
     <string name="icon_designer_square_aspect_ratio">Соотношение сторон</string>
@@ -610,11 +610,11 @@
 
     <!-- Home widgets -->
     <string name="widget_home_menu">Виджет Grace</string>
-    <string name="widget_add">Добавить виджет приложения</string>
+    <string name="widget_add">Добавить свой виджет</string>
     <string name="widget_choose">Выберите виджет</string>
     <string name="widget_search">Поиск виджетов</string>
     <string name="widget_none">Виджеты не найдены</string>
-    <string name="widget_single_limit">Пока поддерживается только один виджет приложения. Стопки виджетов появятся позже.</string>
+    <string name="widget_single_limit">Пока поддерживается только один свой виджет. Стопки виджетов появятся позже.</string>
     <string name="widget_setup_error">Не удалось добавить виджет. Повторите попытку.</string>
     <string name="widget_unavailable">Этот виджет недоступен. Нажмите и удерживайте для управления.</string>
     <string name="widget_no_configuration">У этого виджета нет доступной страницы настроек.</string>
