@@ -675,4 +675,17 @@
     <string name="favorites_add_shortcut">Añadir atajo</string>
     <string name="favorites_add_folder">Añadir carpeta</string>
     <string name="favorites_add_app_stack">Añadir pila de aplicaciones</string>
+    <string name="home_gesture_alphabet_double_tap">Doble toque en la lista A-Z</string>
+    <string name="grace_widgets_title">Widget de Grace</string>
+    <string name="grace_widget_baseline">Línea base (invisible)</string>
+    <string name="popup_widget_full_width">Ancho completo</string>
+    <string name="popup_widget_background">Fondo</string>
+    <string name="popup_widget_content_scale">Escala del contenido · %1$d%%</string>
+    <string name="lab_popup">Ventana emergente</string>
+    <string name="lab_popup_distance">Distancia de deslizamiento adicional</string>
+    <string name="lab_popup_distance_summary">Distancia adicional necesaria al deslizar hacia la derecha antes de abrir una aplicación o una ventana emergente de carpeta. Un valor más alto hace que sea más difícil activar esta acción.</string>
+    <string name="lab_popup_angle">Ángulo de deslizamiento permitido</string>
+    <string name="lab_popup_angle_summary">Desviación máxima por encima o por debajo de la dirección horizontal hacia la derecha. Los valores más bajos requieren un deslizamiento más recto.</string>
+    <string name="lab_dp">%1$d dp</string>
+    <string name="lab_degrees">±%1$d°</string>
 </resources>
