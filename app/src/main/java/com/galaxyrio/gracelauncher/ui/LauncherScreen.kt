@@ -63,6 +63,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
@@ -96,6 +98,7 @@ import com.galaxyrio.gracelauncher.data.PrivateSpaceFolderId
 import com.galaxyrio.gracelauncher.data.WorkProfileFolderId
 import com.galaxyrio.gracelauncher.data.ScheduleEvent
 import com.galaxyrio.gracelauncher.ui.components.AlphabetRail
+import com.galaxyrio.gracelauncher.ui.components.HomeListMotion
 import com.galaxyrio.gracelauncher.ui.components.AppRowGestures
 import com.galaxyrio.gracelauncher.ui.components.LocalPopupGestureSettings
 import com.galaxyrio.gracelauncher.ui.components.LocalLauncherInputEnabled
@@ -679,6 +682,7 @@ internal fun LauncherScreen(
         if (!drawerOpen || workFolder == null || uiState.settings.workProfile.display != PrivateSpaceDisplay.List) workListOpen = false
     }
     val backProgress = remember { Animatable(0f) }
+    val homeListMotion = remember { HomeListMotion(drawerOpen) }
     val darkSystemIcons = if (fullScreen && !searching) MaterialTheme.colorScheme.surface.luminance() > 0.5f else appearance.darkText
     val statusBarPull = rememberLauncherSystemBars(
         autoHide = uiState.settings.hideStatusBar && (!fullScreen || searching),
@@ -719,7 +723,11 @@ internal fun LauncherScreen(
         try {
             events.collect { backProgress.snapTo(it.progress) }
             backProgress.animateTo(1f, tween(180))
-            if (fromSearch) overlay = null else drawerOpen = false
+            if (fromSearch) overlay = null else {
+                // The predictive gesture already completed the same upward exit.
+                homeListMotion.snapTo(drawerOpen = false)
+                drawerOpen = false
+            }
             selectedLetter = null
             backProgress.snapTo(0f)
         } catch (cancelled: CancellationException) {
@@ -737,11 +745,10 @@ internal fun LauncherScreen(
         }
     }
 
-    val drawerAlpha = animateFloatAsState(
-        targetValue = if (drawerOpen) 1f else 0f,
-        animationSpec = if (instantButtonEntrance || drawerTransition != null) androidx.compose.animation.core.snap() else tween(110),
-        label = "appListFade",
-    )
+    LaunchedEffect(drawerOpen, instantButtonEntrance, drawerTransition != null) {
+        if (instantButtonEntrance || drawerTransition != null) homeListMotion.snapTo(drawerOpen)
+        else homeListMotion.animateTo(drawerOpen)
+    }
     val primary = MaterialTheme.colorScheme.primary
     val wallpaperTint = remember(primary, appearance.darkText, uiState.settings.listAppearance.wallpaperDimColor) {
         appearance.wallpaperTint(primary, uiState.settings.listAppearance.wallpaperDimColor)
@@ -879,11 +886,12 @@ internal fun LauncherScreen(
         is LauncherOverlay.Folder -> current.reveal
         else -> null
     }
-    // Once a predictive pop commits, keep HOME fully visible instead of fading
-    // it in a second time while the old drawer's exit alpha finishes settling.
-    val drawerVisibility = if (drawerOpen) {
-        drawerAlpha.value * if (overlay == null) (1f - backProgress.value) else 1f
-    } else 0f
+    val drawerBackProgress = if (drawerOpen && overlay == null) backProgress.value else 0f
+    val drawerVisibility = homeListMotion.drawer.value.x * (1f - drawerBackProgress)
+    val homeVisibility = if (drawerBackProgress > 0f) 1f - drawerVisibility else homeListMotion.home.value.x
+    val homeLift = if (drawerBackProgress > 0f) drawerVisibility else homeListMotion.home.value.y
+    val drawerLift = homeListMotion.drawer.value.y - drawerBackProgress
+    val pageLiftDistance = with(LocalDensity.current) { 24.dp.toPx() }
     val wallpaperEffectVisibility = when {
         searchTransition != null -> searchTransition.searchBackground
         drawerTransition != null -> drawerTransition.fraction
@@ -1011,8 +1019,12 @@ internal fun LauncherScreen(
                 !drawerOpen && overlay == null && !editingHome && !editingWidgetScreen &&
                 buttonTransition == null && !systemActionAccess,
             modifier = Modifier.fillMaxSize().testTag("home_pages")
-                .retainedPage(visible = !drawerOpen || drawerTransition != null || (overlay == null && backProgress.value > 0f))
-                .graphicsLayer { alpha = if (drawerTransition != null) 1f else 1f - drawerVisibility }
+                .retainedPage(visible = !drawerOpen || homeVisibility > 0f || drawerTransition != null)
+                .then(if (drawerOpen) Modifier.clearAndSetSemantics {} else Modifier)
+                .graphicsLayer {
+                    alpha = if (drawerTransition != null) 1f else homeVisibility
+                    translationY = if (drawerTransition != null) 0f else homeLift * pageLiftDistance
+                }
                 .graceReveal(drawerTransition, reveal = false)
                 .then(if (drawerTransition != null) Modifier.background(homeScrim) else Modifier).statusBarContentFade(),
           ) { page ->
@@ -1097,11 +1109,25 @@ internal fun LauncherScreen(
             onRetryPrivateSpace = { actions.requestPrivateSpace(true, actions.refreshApps) },
             workExpanded = workExpanded,
             onWorkProfileSettings = actions.openWorkProfileSettings,
-            modifier = Modifier.retainedPage(visible = drawerOpen)
-                .graphicsLayer { alpha = if (drawerTransition != null) 1f else drawerVisibility }
+            modifier = Modifier.retainedPage(visible = drawerOpen || drawerVisibility > 0f)
+                .then(if (!drawerOpen) Modifier.clearAndSetSemantics {} else Modifier)
+                .graphicsLayer {
+                    alpha = if (drawerTransition != null) 1f else drawerVisibility
+                    translationY = if (drawerTransition != null) 0f else drawerLift * pageLiftDistance
+                }
                 .graceReveal(drawerTransition, reveal = true).statusBarContentFade(),
         )
 
+        // Outgoing pages remain drawn until their exit finishes, but cannot launch
+        // apps accidentally. The persistent alphabet rail stays above this shield,
+        // so a held scrub can continue or reverse the transition.
+        if (homeListMotion.isRunning && drawerTransition == null) {
+            Box(Modifier.fillMaxSize().pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                }
+            })
+        }
         // One persistent rail serves both home pages. Fade it out while paging,
         // then restore each page's visibility without changing the hit-test node.
         val pagingRailAlpha by animateFloatAsState(
