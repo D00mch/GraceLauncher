@@ -155,7 +155,9 @@ fun AlphabetRail(
     val railDescription = stringResource(R.string.alphabet_scroller)
     val homeDescription = stringResource(R.string.back_home)
 
-    fun touchSurface(fromLeft: Boolean) = Modifier.pointerInput(entries, fromLeft) {
+    // Ignoring events inside a disabled pointer handler still blocks siblings below
+    // this overlay. Detach it so widget resize handles can receive the initial down.
+    fun touchSurface(fromLeft: Boolean) = if (!enabled) Modifier else Modifier.pointerInput(entries, fromLeft) {
         awaitEachGesture {
             val down = awaitFirstDown()
             if (!inputEnabled) return@awaitEachGesture

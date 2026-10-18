@@ -781,6 +781,9 @@ internal fun LauncherScreen(
                 !currentSettings.swipeLeftToOpenFirst || (owner.folderId == null && !currentSettings.enabled)) return@launch
             val target = state.firstPopupApp(owner, defaults)
             if (target == null) Toast.makeText(context, R.string.popup_item_unavailable, Toast.LENGTH_SHORT).show()
+            else if (target.folderId != null) state.folders.firstOrNull { it.id == target.folderId }?.let {
+                overlay = LauncherOverlay.Folder(it, bounds)
+            }
             else latestActions.launchAppAt?.invoke(target, bounds) ?: onLaunchApp(target)
         }
     }
@@ -1055,7 +1058,8 @@ internal fun LauncherScreen(
                     homePager.settledPage == 1 && !homePager.isScrollInProgress,
                 onEditingChange = { editingWidgetScreen = it },
                 onEdit = { editingWidgetScreen = false; overlay = LauncherOverlay.SettingsDestination("WidgetScreenEditor") },
-                onLaunchApp = onLaunchApp, onAppDetails = { overlay = LauncherOverlay.AppDetails(it) })
+                onLaunchApp = onLaunchApp, onAppDetails = { overlay = LauncherOverlay.AppDetails(it) },
+                onOpenFolder = openFolder)
             }
            }
           }

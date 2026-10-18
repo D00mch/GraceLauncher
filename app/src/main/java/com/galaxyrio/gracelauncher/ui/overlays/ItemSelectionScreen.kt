@@ -40,7 +40,7 @@ import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
 import com.galaxyrio.gracelauncher.ui.components.LauncherSymbol
 import com.galaxyrio.gracelauncher.ui.components.ShortcutPickerScreen
 import com.galaxyrio.gracelauncher.ui.settings.FavoriteFoldersScreen
-import com.galaxyrio.gracelauncher.ui.settings.AppStackPickerScreen
+import com.galaxyrio.gracelauncher.ui.settings.AppGroupPickerScreen
 import com.galaxyrio.gracelauncher.ui.settings.SettingsScaffold
 import com.galaxyrio.gracelauncher.ui.widgets.WidgetPreview
 import kotlinx.coroutines.isActive
@@ -48,6 +48,14 @@ import kotlinx.coroutines.launch
 
 private data class SelectionEntry(val key: String, val label: String, val app: LauncherApp? = null, val widget: HomeLayout? = null)
 private data class SelectionOption(val entry: SelectionEntry, val checked: Boolean, val enabled: Boolean)
+
+@Composable
+private fun profileGroupChoices(state: LauncherUiState, selectedKeys: Set<String>) = listOf(
+    SelectionOption(SelectionEntry(PrivateSpaceFolderKey, stringResource(R.string.private_space_title), state.folderItem(state.privateFolder)),
+        PrivateSpaceFolderKey in selectedKeys, state.canFavoritePrivateSpace),
+    SelectionOption(SelectionEntry(WorkProfileFolderKey, stringResource(R.string.work_profile_title), state.folderItem(state.workFolder)),
+        WorkProfileFolderKey in selectedKeys, state.canFavoriteWorkProfile),
+)
 
 @Composable
 internal fun ProfileEditorScreen(owner: LauncherApp, uiState: LauncherUiState, actions: LauncherActions,
@@ -98,12 +106,7 @@ internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions,
         onAddShortcut = { choosingShortcut = true },
         onAddFolder = { choosingFolders = true },
         onAddStack = { choosingStacks = true },
-        appGroupChoices = listOf(
-            SelectionOption(SelectionEntry(PrivateSpaceFolderKey, stringResource(R.string.private_space_title), uiState.folderItem(uiState.privateFolder)),
-                PrivateSpaceFolderKey in uiState.favoriteKeys, uiState.canFavoritePrivateSpace),
-            SelectionOption(SelectionEntry(WorkProfileFolderKey, stringResource(R.string.work_profile_title), uiState.folderItem(uiState.workFolder)),
-                WorkProfileFolderKey in uiState.favoriteKeys, uiState.canFavoriteWorkProfile),
-        ),
+        appGroupChoices = profileGroupChoices(uiState, uiState.favoriteKeys),
     )
 }
 
@@ -125,9 +128,12 @@ internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, act
     val ready = !uiState.isLoadingSettings && !uiState.settingsLoadFailed &&
         (uiState.popups.containsKey(owner.key) || result.status == ShortcutStatus.Ready || result.status == ShortcutStatus.DefaultLauncherRequired)
     var choosingShortcut by rememberSaveable(owner.key) { mutableStateOf(false) }
-    var choosingStacks by rememberSaveable(owner.key) { mutableStateOf(false) }
-    if (choosingStacks) {
-        AppStackPickerScreen(uiState, actions, entries.map { it.key }.toSet(), { choosingStacks = false }) { app ->
+    // null = editor, false = folders, true = app stacks.
+    var choosingGroup by rememberSaveable(owner.key) { mutableStateOf<Boolean?>(null) }
+    val groupMode = choosingGroup
+    if (groupMode != null) {
+        AppGroupPickerScreen(uiState, actions, entries.map { it.key }.toSet(), { choosingGroup = null },
+            appStacks = groupMode, ownerKey = owner.key) { app ->
             actions.updatePopup(owner, shortcuts) { current ->
                 if (current.any { it.key == app.key }) current.filterNot { it.key == app.key } else current + PopupItem(app.key)
             }
@@ -158,8 +164,10 @@ internal fun PopupEditorScreen(owner: LauncherApp, uiState: LauncherUiState, act
         header = header,
         shortcutStatus = result.status, onRetry = { retry++ }, onRequestAccess = actions.requestDefaultHome,
         onAddWidget = if (isStack) null else ({ actions.addPopupWidget(owner, shortcuts) }),
-        onAddStack = if (!isStack) ({ choosingStacks = true }) else null,
+        onAddFolder = if (!isStack) ({ choosingGroup = false }) else null,
+        onAddStack = if (!isStack) ({ choosingGroup = true }) else null,
         onAddShortcut = { choosingShortcut = true },
+        appGroupChoices = if (widgetScreen) profileGroupChoices(uiState, entries.map { it.key }.toSet()) else emptyList(),
         onToggle = { app -> actions.updatePopup(owner, shortcuts) { current ->
             if (current.any { it.key == app.key }) current.filterNot { it.key == app.key } else current + PopupItem(app.key)
         } },
@@ -189,7 +197,7 @@ private fun ItemSelectionScreen(
     onAddShortcut: (() -> Unit)? = null,
     onAddFolder: (() -> Unit)? = null,
     onAddStack: (() -> Unit)? = null,
-    appGroupChoices: List<SelectionOption>? = null,
+    appGroupChoices: List<SelectionOption> = emptyList(),
     header: (@Composable () -> Unit)? = null,
     reorderOnly: Boolean = false,
     loading: Boolean = false,
@@ -301,37 +309,28 @@ private fun ItemSelectionScreen(
                     AddSelectionContent("popup_add_widget", enabled, onAddWidget)
                 }
             }
-            if (appGroupChoices != null) item(key = "app_groups_header", contentType = "header") {
+            if (onAddShortcut != null || onAddFolder != null || onAddStack != null || appGroupChoices.isNotEmpty()) item(key = "app_groups_header", contentType = "header") {
                 SelectionHeading(stringResource(R.string.favorites_shortcuts_app_group), "${tag}_app_groups")
             }
             if (onAddShortcut != null) {
-                if (appGroupChoices == null) item(key = "add_shortcuts_header", contentType = "header") {
-                    SelectionHeading(stringResource(R.string.shortcuts_title), "${tag}_shortcuts")
-                }
                 item(key = "add_shortcut") {
                     AddSelectionContent("${tag}_add_shortcut", enabled, onAddShortcut,
-                        stringResource(if (appGroupChoices != null) R.string.favorites_add_shortcut else R.string.popup_add_new))
+                        stringResource(R.string.favorites_add_shortcut))
                 }
             }
             if (onAddFolder != null) {
-                if (appGroupChoices == null) item(key = "folders_header", contentType = "header") {
-                    SelectionHeading(stringResource(R.string.settings_folders), "${tag}_folders")
-                }
                 item(key = "add_folder") {
                     AddSelectionContent("${tag}_add_folder", enabled, onAddFolder,
-                        stringResource(if (appGroupChoices != null) R.string.favorites_add_folder else R.string.popup_add_new))
+                        stringResource(R.string.favorites_add_folder))
                 }
             }
             if (onAddStack != null) {
-                if (appGroupChoices == null) item(key = "stacks_header", contentType = "header") {
-                    SelectionHeading(stringResource(R.string.app_stacks_title), "${tag}_stacks")
-                }
                 item(key = "add_stack") {
                     AddSelectionContent("${tag}_add_stack", enabled, onAddStack,
-                        stringResource(if (appGroupChoices != null) R.string.favorites_add_app_stack else R.string.popup_add_new))
+                        stringResource(R.string.favorites_add_app_stack))
                 }
             }
-            appGroupChoices?.forEach { choice ->
+            appGroupChoices.forEach { choice ->
                 item(key = "app_group:${choice.entry.key}") {
                     SelectionChoice(choice.entry, choice.checked, "${tag}_group:${choice.entry.key}",
                         enabled && choice.enabled && reorder.draggingKey == null,

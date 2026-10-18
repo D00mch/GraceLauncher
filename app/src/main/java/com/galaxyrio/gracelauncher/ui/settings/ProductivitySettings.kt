@@ -271,9 +271,10 @@ internal fun FolderSettings(
     appStacks: Boolean = false,
     selectionChangesFavorites: Boolean = true,
     newPlacement: FolderPlacement = FolderPlacement.Favorites,
+    excludedIds: Set<String> = emptySet(),
     onEdit: (String) -> Unit,
 ) {
-    val folders = uiState.folders.filter { it.isAppStack == appStacks }
+    val folders = uiState.folders.filter { it.isAppStack == appStacks && it.id !in excludedIds }
     val title = stringResource(if (appStacks) R.string.app_stacks_title else R.string.settings_folders)
     val createTitle = stringResource(if (appStacks) R.string.app_stack_create else R.string.settings_folder_create)
     var creating by rememberSaveable { mutableStateOf(false) }
