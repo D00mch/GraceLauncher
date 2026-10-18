@@ -318,8 +318,8 @@ fun LauncherRoute(
         addWidget = {
             when {
                 uiState.isLoadingSettings || uiState.settingsLoadFailed -> Toast.makeText(context, R.string.settings_storage_load_error, Toast.LENGTH_SHORT).show()
-                uiState.settings.homeLayout.hasWidget -> Toast.makeText(context, R.string.widget_single_limit, Toast.LENGTH_LONG).show()
-                else -> openSystemApp(Intent(context, WidgetSetupActivity::class.java))
+                else -> openSystemApp(Intent(context, WidgetSetupActivity::class.java)
+                    .putExtra(WidgetSetupActivity.EXTRA_POPUP_OWNER, com.galaxyrio.gracelauncher.data.HomeContentKey))
             }
         },
         configureWidget = {
@@ -527,6 +527,7 @@ internal fun LauncherScreen(
     val homePager = rememberPagerState { if (uiState.settings.widgetScreen.enabled) 2 else 1 }
     val pageScope = rememberCoroutineScope()
     var editingWidgetScreen by rememberSaveable { mutableStateOf(false) }
+    var editingHomeContent by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.settings.widgetScreen.enabled) {
         if (!uiState.settings.widgetScreen.enabled) { editingWidgetScreen = false; homePager.scrollToPage(0) }
     }
@@ -687,7 +688,7 @@ internal fun LauncherScreen(
     val statusBarPull = rememberLauncherSystemBars(
         autoHide = uiState.settings.hideStatusBar && (!fullScreen || searching),
         darkIcons = darkSystemIcons,
-        allowPullDown = !fullScreen && !editingHome && !editingWidgetScreen && overlay == null && buttonTransition == null,
+        allowPullDown = !fullScreen && !editingHome && !editingWidgetScreen && !editingHomeContent && overlay == null && buttonTransition == null,
     )
 
     LaunchedEffect(returnHomeRequests) {
@@ -1016,7 +1017,7 @@ internal fun LauncherScreen(
             state = homePager, beyondViewportPageCount = 1,
             userScrollEnabled = uiState.settings.widgetScreen.enabled &&
                 (uiState.settings.widgetScreen.swipeToOpen || homePager.currentPage == 1) &&
-                !drawerOpen && overlay == null && !editingHome && !editingWidgetScreen &&
+                !drawerOpen && overlay == null && !editingHome && !editingWidgetScreen && !editingHomeContent &&
                 buttonTransition == null && !systemActionAccess,
             modifier = Modifier.fillMaxSize().testTag("home_pages")
                 .retainedPage(visible = !drawerOpen || homeVisibility > 0f || drawerTransition != null)
@@ -1043,6 +1044,8 @@ internal fun LauncherScreen(
                 onClockClick = onClockClick,
                 onWidgetMenu = { overlay = LauncherOverlay.HomeWidgetMenu },
                 onCustomWidgetMenu = { overlay = LauncherOverlay.CustomWidgetMenu },
+                actions = actions,
+                onWidgetEditingChange = { editingHomeContent = it },
                 editingLayout = editingHome,
                 widgetInputEnabled = !drawerOpen && overlay == null && buttonTransition == null && !systemActionAccess &&
                     homePager.settledPage == 0 && !homePager.isScrollInProgress,
@@ -1131,11 +1134,11 @@ internal fun LauncherScreen(
         // One persistent rail serves both home pages. Fade it out while paging,
         // then restore each page's visibility without changing the hit-test node.
         val pagingRailAlpha by animateFloatAsState(
-            if (homePager.isScrollInProgress || editingWidgetScreen) 0f else 1f,
-            tween(if (homePager.isScrollInProgress || editingWidgetScreen) 90 else 180), label = "pagingAlphabet",
+            if (homePager.isScrollInProgress || editingWidgetScreen || editingHomeContent) 0f else 1f,
+            tween(if (homePager.isScrollInProgress || editingWidgetScreen || editingHomeContent) 90 else 180), label = "pagingAlphabet",
         )
         if (!editingHome) AlphabetRail(
-            enabled = !homePager.isScrollInProgress && !editingWidgetScreen,
+            enabled = !homePager.isScrollInProgress && !editingWidgetScreen && !editingHomeContent,
             alphabet = alphabet,
             leftTouchEnabled = uiState.settings.listAppearance.leftAlphabet,
             letters = model.letters,
@@ -1171,7 +1174,7 @@ internal fun LauncherScreen(
             // Widget screen always hides the idle glyphs; its edge touch areas stay active.
             autoHide = (uiState.settings.hideAlphabet || homePager.currentPage == 1) && !drawerOpen,
         )
-        if (!editingWidgetScreen && ((!drawerOpen && editingHome) || uiState.settings.graceButton.isVisible(drawerOpen))) {
+        if (!editingWidgetScreen && !editingHomeContent && ((!drawerOpen && editingHome) || uiState.settings.graceButton.isVisible(drawerOpen))) {
             val buttonBounds = uiState.settings.graceButton.layout.bounds(maxWidth.value, maxHeight.value,
                 statusBarHeight.value, bottomInset.value)
             GraceButton(settings = uiState.settings.graceButton, editing = editingHome && !drawerOpen,

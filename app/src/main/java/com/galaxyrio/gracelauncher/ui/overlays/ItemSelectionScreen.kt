@@ -46,7 +46,23 @@ import com.galaxyrio.gracelauncher.ui.widgets.WidgetPreview
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-private data class SelectionEntry(val key: String, val label: String, val app: LauncherApp? = null, val widget: HomeLayout? = null)
+private data class SelectionEntry(val key: String, val label: String, val app: LauncherApp? = null, val widget: HomeLayout? = null,
+    val graceWidget: GraceWidget? = null)
+
+@Composable
+private fun graceWidgetLabel(widget: GraceWidget): String = stringResource(when (widget) {
+    GraceWidget.Clock -> R.string.settings_clock
+    GraceWidget.Calendar -> R.string.widget_calendar
+    GraceWidget.Media -> R.string.settings_media_player
+    GraceWidget.Baseline -> R.string.grace_widget_baseline
+})
+
+private fun GraceWidget.symbol() = when (this) {
+    GraceWidget.Clock -> LauncherSymbol.Clock
+    GraceWidget.Calendar -> LauncherSymbol.Calendar
+    GraceWidget.Media -> LauncherSymbol.Music
+    GraceWidget.Baseline -> LauncherSymbol.Move
+}
 private data class SelectionOption(val entry: SelectionEntry, val checked: Boolean, val enabled: Boolean)
 
 @Composable
@@ -100,9 +116,25 @@ internal fun FavoritesScreen(uiState: LauncherUiState, actions: LauncherActions,
     }
     ItemSelectionScreen(
         title = stringResource(R.string.edit_favorites), tag = "favorites",
-        selected = uiState.favoriteItems.map { SelectionEntry(it.key, it.label, it) },
+        selected = uiState.homeItems.map { item ->
+            val grace = GraceWidget.fromKey(item.key)
+            val app = uiState.findItem(item.key)
+            SelectionEntry(item.key, if (grace != null) graceWidgetLabel(grace) else
+                item.widget?.widgetLabel ?: app?.label ?: stringResource(R.string.popup_item_unavailable), app, item.widget, grace)
+        },
         apps = uiState.allApps, enabled = !uiState.isLoadingSettings && !uiState.settingsLoadFailed,
-        onToggle = onToggle, onRemove = { key -> uiState.findItem(key)?.let(onToggle) }, onReorder = onReorder, onDone = onDone,
+        onToggle = onToggle, onRemove = { key ->
+            val grace = GraceWidget.fromKey(key)
+            when {
+                grace != null -> actions.updateSettings { grace.setEnabled(it, false) }
+                uiState.homeItems.any { it.key == key && it.widget != null } ->
+                    actions.updatePopup(homeContentOwner(), emptyList()) { it.filterNot { entry -> entry.key == key } }
+                else -> uiState.findItem(key)?.let(onToggle)
+            }
+        }, onReorder = onReorder, onDone = onDone,
+        onAddWidget = actions.addWidget,
+        graceSettings = uiState.settings,
+        onToggleGrace = { grace -> actions.updateSettings { grace.setEnabled(it, !grace.enabled(it)) } },
         onAddShortcut = { choosingShortcut = true },
         onAddFolder = { choosingFolders = true },
         onAddStack = { choosingStacks = true },
@@ -197,6 +229,8 @@ private fun ItemSelectionScreen(
     onAddShortcut: (() -> Unit)? = null,
     onAddFolder: (() -> Unit)? = null,
     onAddStack: (() -> Unit)? = null,
+    graceSettings: LauncherSettings? = null,
+    onToggleGrace: (GraceWidget) -> Unit = {},
     appGroupChoices: List<SelectionOption> = emptyList(),
     header: (@Composable () -> Unit)? = null,
     reorderOnly: Boolean = false,
@@ -309,6 +343,16 @@ private fun ItemSelectionScreen(
                     AddSelectionContent("popup_add_widget", enabled, onAddWidget)
                 }
             }
+            if (graceSettings != null) {
+                item(key = "grace_widgets_header", contentType = "header") {
+                    SelectionHeading(stringResource(R.string.grace_widgets_title), "${tag}_grace_widgets")
+                }
+                items(GraceWidget.entries, key = { "grace_choice:${it.key}" }) { grace ->
+                    AppSelectionRow(graceWidgetLabel(grace), grace.enabled(graceSettings), { onToggleGrace(grace) },
+                        Modifier.testTag("${tag}_${grace.key}"), enabled = enabled,
+                        icon = { LauncherIcon(grace.symbol()) })
+                }
+            }
             if (onAddShortcut != null || onAddFolder != null || onAddStack != null || appGroupChoices.isNotEmpty()) item(key = "app_groups_header", contentType = "header") {
                 SelectionHeading(stringResource(R.string.favorites_shortcuts_app_group), "${tag}_app_groups")
             }
@@ -369,7 +413,8 @@ private fun SelectionChoice(entry: SelectionEntry, checked: Boolean, tag: String
     modifier: Modifier = Modifier, selectable: Boolean = true, trailing: @Composable () -> Unit = {}) {
     AppSelectionRow(entry.label, checked, onToggle, modifier.testTag(tag), enabled = enabled,
         selectable = selectable, trailing = trailing, icon = {
-            if (entry.app != null) AppIcon(entry.app, size = 36.dp)
+            if (entry.graceWidget != null) LauncherIcon(entry.graceWidget.symbol())
+            else if (entry.app != null) AppIcon(entry.app, size = 36.dp)
             else LauncherIcon(LauncherSymbol.Apps)
         })
 }

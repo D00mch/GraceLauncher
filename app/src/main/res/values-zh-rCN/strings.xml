@@ -600,6 +600,8 @@
     <string name="widget_remove">移除</string>
     <string name="widget_move_home">移动时钟和应用列表</string>
     <string name="widget_resize">调整小组件大小</string>
+    <string name="grace_widgets_title">Grace 小组件</string>
+    <string name="grace_widget_baseline">基准线（不可见）</string>
     <string name="popup_widget_full_width">全宽</string>
     <string name="popup_widget_background">底色</string>
     <string name="popup_widget_content_scale">内容缩放 · %1$d%%</string>

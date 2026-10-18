@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.galaxyrio.gracelauncher.R
 import com.galaxyrio.gracelauncher.data.HomeLayout
 import com.galaxyrio.gracelauncher.ui.components.LauncherIcon
@@ -71,6 +72,7 @@ internal fun PopupWidgetItem(
     maxHeight: Int, onChange: (HomeLayout, Boolean) -> Unit,
     onDragStart: () -> Unit, onDrag: (Float) -> Unit, onDragEnd: (Boolean) -> Unit,
     onResizing: (Boolean) -> Unit,
+    horizontalInset: Dp = 18.dp,
 ) {
     val hosted = rememberHostedWidget(layout)
     val density = LocalDensity.current.density
@@ -88,7 +90,7 @@ internal fun PopupWidgetItem(
     }
     BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = 8.dp),
         contentAlignment = Alignment.Center) {
-        val available = (maxWidth.value - 36f).coerceAtLeast(1f)
+        val available = (maxWidth.value - horizontalInset.value * 2).coerceAtLeast(1f)
         val minWidth = hosted.info?.let {
             ((it.minResizeWidth.takeIf { n -> n > 0 } ?: it.minWidth) +
                 (padding?.left ?: 0) + (padding?.right ?: 0)) / density

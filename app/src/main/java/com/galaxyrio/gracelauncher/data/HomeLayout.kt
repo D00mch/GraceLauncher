@@ -14,10 +14,16 @@ data class HomeLayout(
     val popupFullWidth: Boolean = false,
     val popupBackground: Boolean = false,
     val popupContentScale: Int = 100,
+    /** Null reads the legacy header/widget/favorites arrangement until the first edit. */
+    val homeOrder: List<String>? = null,
+    val baselineEnabled: Boolean = true,
+    /** Offset from the old home origin, captured once to preserve its existing visual position. */
+    val baselineOffsetDp: Float? = null,
 ) {
     val hasWidget: Boolean get() = widgetId >= 0
 
-    fun withoutWidget() = HomeLayout(topOffsetDp = topOffsetDp)
+    fun withoutWidget() = HomeLayout(topOffsetDp = topOffsetDp, homeOrder = homeOrder,
+        baselineEnabled = baselineEnabled, baselineOffsetDp = baselineOffsetDp)
 
     fun encode(): String = JSONObject().apply {
         put("topOffsetDp", topOffsetDp.takeIf { it.isFinite() }?.coerceIn(-1200f, 1200f) ?: 0f)
@@ -29,6 +35,9 @@ data class HomeLayout(
         put("popupFullWidth", popupFullWidth)
         put("popupBackground", popupBackground)
         put("popupContentScale", popupContentScale.coerceIn(50, 150))
+        homeOrder?.let { put("homeOrder", org.json.JSONArray(it.distinct())) }
+        put("baselineEnabled", baselineEnabled)
+        baselineOffsetDp?.takeIf { it.isFinite() }?.let { put("baselineOffsetDp", it.coerceIn(0f, 1600f)) }
     }.toString()
 
     companion object {
@@ -44,6 +53,11 @@ data class HomeLayout(
                 popupFullWidth = data.optBoolean("popupFullWidth", false),
                 popupBackground = data.optBoolean("popupBackground", false),
                 popupContentScale = data.optInt("popupContentScale", 100).coerceIn(50, 150),
+                homeOrder = data.optJSONArray("homeOrder")?.let { array ->
+                    (0 until array.length()).mapNotNull { (array.opt(it) as? String)?.takeIf(String::isNotBlank) }.distinct()
+                },
+                baselineEnabled = data.optBoolean("baselineEnabled", true),
+                baselineOffsetDp = data.optDouble("baselineOffsetDp", Double.NaN).toFloat().takeIf { it.isFinite() }?.coerceIn(0f, 1600f),
             )
         }.getOrDefault(HomeLayout())
     }

@@ -267,6 +267,9 @@ data class LauncherUiState(
             // Existing folders keep their old position at the end until reordered.
             return (favoriteOrder + items.keys).distinct().mapNotNull(items::get)
         }
+
+    val homeItems: List<PopupItem> get() = com.galaxyrio.gracelauncher.data.orderedHomeItems(
+        settings, favoriteItems.map(LauncherApp::key), popups[com.galaxyrio.gracelauncher.data.HomeContentKey].orEmpty())
 }
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
@@ -1105,6 +1108,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun reorderFavorites(keys: List<String>) {
         val updated = favoritesStore.reorder(keys, currentFavoriteOrder())
         _uiState.update { it.copy(favoriteOrder = updated) }
+        val visibleOrder = _uiState.value.homeItems.map { it.key }
+        persistSettings {
+            settingsRepository.mutateSettings { current -> current.copy(homeLayout = current.homeLayout.copy(
+                homeOrder = com.galaxyrio.gracelauncher.data.mergeHomeOrder(keys, current.homeLayout.homeOrder ?: visibleOrder))) }
+        }
     }
 
     private fun currentFavoriteOrder(): List<String> = _uiState.value.let { state ->
