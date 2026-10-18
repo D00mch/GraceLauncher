@@ -54,6 +54,7 @@
     <string name="settings_gestures">Gesture</string>
     <string name="home_gestures_enable">Enable gestures</string>
     <string name="home_gesture_double_tap">Double tap empty space</string>
+    <string name="home_gesture_alphabet_double_tap">Double tap A–Z list</string>
     <string name="work_profile_title">Work Profile</string>
     <string name="work_profile_summary">Organize apps in your Android work profile</string>
     <string name="work_profile_enable">Enable Work Profile grouping</string>

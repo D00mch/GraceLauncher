@@ -1160,6 +1160,14 @@ internal fun LauncherScreen(
                 .graphicsLayer { alpha = pagingRailAlpha }
                 .graceReveal(drawerTransition.takeIf { uiState.settings.hideAlphabet }, reveal = true),
             onScrubFinished = finishScrubbing,
+            doubleTapIntervalMs = uiState.settings.homeGestures.doubleTapIntervalMs,
+            onDoubleTap = if (uiState.settings.homeGestures.enabled && uiState.settings.homeGestures.alphabetDoubleTap.active &&
+                !uiState.isLoadingSettings && !uiState.settingsLoadFailed && overlay == null &&
+                !systemActionAccess && buttonTransition == null && backProgress.value == 0f) { position ->
+                val radius = homeGestureRadius
+                val origin = GraceButtonOrigin(Rect(position.x - radius, position.y - radius, position.x + radius, position.y + radius))
+                performGestureAction(uiState.settings.homeGestures.alphabetDoubleTap, origin, fromButton = false)
+            } else null,
             // Widget screen always hides the idle glyphs; its edge touch areas stay active.
             autoHide = (uiState.settings.hideAlphabet || homePager.currentPage == 1) && !drawerOpen,
         )

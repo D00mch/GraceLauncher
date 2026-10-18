@@ -535,6 +535,7 @@
     <string name="settings_gestures">Gesti</string>
     <string name="home_gestures_enable">Abilita gesti</string>
     <string name="home_gesture_double_tap">Tocco doppio sullo spazio vuoto</string>
+    <string name="home_gesture_alphabet_double_tap">Tocco doppio sull’elenco A–Z</string>
     <string name="work_profile_title">Profilo di lavoro</string>
     <string name="work_profile_summary">Organizza le app nel tuo profilo di lavoro Android</string>
     <string name="work_profile_indicator">Indicatore app di lavoro</string>
