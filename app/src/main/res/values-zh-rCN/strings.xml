@@ -691,4 +691,11 @@
     <string name="app_stack_expand">展开应用堆</string>
     <string name="app_stack_collapse">收起应用堆</string>
     <string name="app_stack_empty">选择下方的应用或快捷方式。</string>
+    <string name="lab_popup">Pop up</string>
+    <string name="lab_popup_distance">额外滑动距离</string>
+    <string name="lab_popup_distance_summary">右滑展开应用或文件夹弹窗前需要额外滑动的距离，数值越大越不容易触发。</string>
+    <string name="lab_popup_angle">允许偏离角度</string>
+    <string name="lab_popup_angle_summary">相对水平向右方向，允许向上或向下偏离的最大角度，数值越小越需要水平滑动。</string>
+    <string name="lab_dp">%1$d dp</string>
+    <string name="lab_degrees">±%1$d°</string>
 </resources>

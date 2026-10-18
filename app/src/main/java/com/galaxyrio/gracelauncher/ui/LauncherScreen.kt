@@ -97,6 +97,7 @@ import com.galaxyrio.gracelauncher.data.WorkProfileFolderId
 import com.galaxyrio.gracelauncher.data.ScheduleEvent
 import com.galaxyrio.gracelauncher.ui.components.AlphabetRail
 import com.galaxyrio.gracelauncher.ui.components.AppRowGestures
+import com.galaxyrio.gracelauncher.ui.components.LocalPopupGestureSettings
 import com.galaxyrio.gracelauncher.ui.components.LocalLauncherInputEnabled
 import com.galaxyrio.gracelauncher.ui.components.LocalAppTransitions
 import com.galaxyrio.gracelauncher.ui.components.LocalHomeAnimationTarget
@@ -971,7 +972,8 @@ internal fun LauncherScreen(
     val homeGestureRadius = with(LocalDensity.current) { 24.dp.toPx() }
     val widgetHost = rememberWidgetHost()
     CompositionLocalProvider(LocalLauncherAppearance provides appearance, LocalListAppearance provides uiState.settings.listAppearance,
-        LocalHapticFeedback provides haptics, LocalWidgetHost provides widgetHost) {
+        LocalHapticFeedback provides haptics, LocalWidgetHost provides widgetHost,
+        LocalPopupGestureSettings provides popupSettings) {
       // One wallpaper treatment serves both transparent search and the alphabetical app list.
       val revealDimAlpha = if (drawerTransition != null && uiState.settings.dimWallpaper)
           uiState.settings.wallpaperDimAmount.coerceIn(0, 100) / 100f else dimAlpha
