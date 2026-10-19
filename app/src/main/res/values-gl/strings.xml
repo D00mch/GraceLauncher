@@ -667,4 +667,17 @@
     <string name="favorites_add_shortcut">Engadir atallo</string>
     <string name="favorites_add_folder">Engadir cartafol</string>
     <string name="favorites_add_app_stack">Engadir pila de aplicacións</string>
+    <string name="home_gesture_alphabet_double_tap">Dobre premido na lista da A a Z</string>
+    <string name="grace_widgets_title">Widget de Grace</string>
+    <string name="grace_widget_baseline">Liña base (invisible)</string>
+    <string name="popup_widget_full_width">Ancho completo</string>
+    <string name="popup_widget_background">Fondo</string>
+    <string name="popup_widget_content_scale">Escala do contido · %1$d%%</string>
+    <string name="lab_popup">Xanela emerxente</string>
+    <string name="lab_popup_distance">Distancia de esvaramento adicional</string>
+    <string name="lab_popup_distance_summary">Distancia adicional para esvarar cara á dereita antes de abrir unha aplicación ou unha xanela emerxente de cartafol. Uns valores máis altos fan que sexa máis difícil activalo.</string>
+    <string name="lab_popup_angle">Ángulo de deslizamento permitido</string>
+    <string name="lab_popup_angle_summary">Desviación máxima por riba ou por debaixo da dirección horizontal cara á dereita. Uns valores máis baixos requiren un movemento de esvaramento máis recto.</string>
+    <string name="lab_dp">%1$d dp</string>
+    <string name="lab_degrees">±%1$d°</string>
 </resources>
